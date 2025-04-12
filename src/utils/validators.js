@@ -499,7 +499,7 @@ const isValidEmail = (email) => {
   };
   
   // Export all validation functions
-  module.exports = {
+  export default {
     // Basic validators
     isValidEmail,
     isStrongPassword,
