@@ -1,5 +1,5 @@
 
-import Product from '../models/Product';
+import Product from '../models/Product.js';
 
 import { validationResult } from 'express-validator';
 import fs from 'fs';

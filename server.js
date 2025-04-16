@@ -9,11 +9,12 @@ import authRoutes from './src/routes/AuthRoutes.js';
 import userRoutes from './src/routes/UserRoutes.js';
 import eventRoutes from './src/routes/EventRoutes.js';
 import venueRoutes from './src/routes/VenueRoutes.js';
-import blogRoutes from './src/routes/BLogRoutes.js';
+import blogRoutes from './src/routes/BlogRoutes.js';
 import storeRoutes from './src/routes/StoreRoutes.js';
 import crowdfundingRoutes from './src/routes/CrowdfundingRoutes.js';
 import paymentRoutes from './src/routes/PaymentRoutes.js';
 import reviewRoutes from './src/routes/ReviewRoutes.js';
+import productRoutes from './src/routes/ProductRoutes.js'; // Import ProductRoutes
 
 // Load environment variables
 dotenv.config();
@@ -44,6 +45,7 @@ app.use('/store', storeRoutes);
 app.use('/crowdfunding', crowdfundingRoutes);
 app.use('/payments', paymentRoutes);
 app.use('/reviews', reviewRoutes);
+app.use('/products', productRoutes); // Add ProductRoutes
 
 // Global error handler
 app.use(errorHandler);

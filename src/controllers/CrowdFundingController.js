@@ -1,7 +1,7 @@
 
-import Campaign from '../models/Campaign';
-import Event from '../models/Event';
-import Payment from '../models/Payment';
+import Campaign from '../models/Campaign.js';
+import Event from '../models/Event.js';
+import Payment from '../models/Payment.js';
 export const createCampaign = async (req, res) => {
   try {
     const { title, description, event, goal, startDate, endDate, rewards } = req.body;

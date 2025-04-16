@@ -1,6 +1,6 @@
 
 import { validationResult } from 'express-validator';
-import BlogPost from '../models/BlogPost';
+import BlogPost from '../models/BlogPost.js';
 import fs from 'fs';
 import path from 'path';
 

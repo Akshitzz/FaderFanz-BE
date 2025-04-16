@@ -1,5 +1,4 @@
-const Venue = require('../models/Venue');
-import Venue from '../models/Venue';
+import Venue from '../models/Venue.js';
 export const createVenue = async (req, res) => {
   try {
     // Check if user is a venue owner

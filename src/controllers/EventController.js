@@ -1,5 +1,5 @@
-import Event from '../models/Event';
-import User from '../models/User';
+import Event from '../models/Event.js';
+
 
 export const createEvent = async (req, res) => {
   try {

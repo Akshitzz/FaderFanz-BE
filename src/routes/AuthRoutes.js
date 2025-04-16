@@ -1,18 +1,49 @@
 import express from 'express';
-import { register, login, getProfile, updateProfile } from '../controllers/AuthController.js';
+import {
+  registerSponsor,
+  registerVenueOwner,
+  registerCurator,
+  registerGuest,
+} from '../controllers/AuthController.js';
+import {
+  profileUpload,
+  venueUpload,
+  mediaUpload,
+  handleUploadError,
+} from '../middleware/upload.js';
 
 const router = express.Router();
 
-// Route for user registration
-router.post('/register', register);
+// Route to register a sponsor
+router.post(
+  '/register/sponsor',
+  profileUpload, // Middleware to handle sponsor profile image uploads
+  handleUploadError, // Middleware to handle upload errors
+  registerSponsor
+);
 
-// Route for user login
-router.post('/login', login);
+// Route to register a venue owner
+router.post(
+  '/register/venue-owner',
+  venueUpload, // Middleware to handle venue image uploads
+  handleUploadError, // Middleware to handle upload errors
+  registerVenueOwner
+);
 
-// Route to get user profile (protected route)
-router.get('/profile', getProfile);
+// Route to register a curator
+router.post(
+  '/register/curator',
+  mediaUpload, // Middleware to handle curator media uploads
+  handleUploadError, // Middleware to handle upload errors
+  registerCurator
+);
 
-// Route to update user profile (protected route)
-router.put('/profile', updateProfile);
+// Route to register a guest
+router.post(
+  '/register/guest',
+  mediaUpload, // Middleware to handle guest media uploads
+  handleUploadError, // Middleware to handle upload errors
+  registerGuest
+);
 
 export default router;

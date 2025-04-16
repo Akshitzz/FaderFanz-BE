@@ -1,5 +1,5 @@
-import Review from '../models/Review';
-import Event from '../models/Event';
+import Review from '../models/Review.js';
+import Event from '../models/Event.js';
 export const createReview = async (req, res) => {
   try {
     const { event, rating, comment, mediaFiles } = req.body;
