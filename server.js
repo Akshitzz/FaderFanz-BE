@@ -9,7 +9,7 @@ import authRoutes from './src/routes/AuthRoutes.js';
 import userRoutes from './src/routes/UserRoutes.js';
 import eventRoutes from './src/routes/EventRoutes.js';
 import venueRoutes from './src/routes/VenueRoutes.js';
-import blogRoutes from './src/routes/BlogRoutes.js';
+import blogRoutes from './src/routes/BLogRoutes.js';
 import storeRoutes from './src/routes/StoreRoutes.js';
 import crowdfundingRoutes from './src/routes/CrowdfundingRoutes.js';
 import paymentRoutes from './src/routes/PaymentRoutes.js';
@@ -25,7 +25,7 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
-
+app.use(express.urlencoded({ extended: true }));
 // Connect to MongoDB
 mongoose
   .connect(process.env.MONGO_URI, {

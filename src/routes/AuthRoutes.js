@@ -4,12 +4,14 @@ import {
   registerVenueOwner,
   registerCurator,
   registerGuest,
+  login, // Import the login function
 } from '../controllers/AuthController.js';
 import {
   profileUpload,
   venueUpload,
   mediaUpload,
   handleUploadError,
+  mediaUpload2,
 } from '../middleware/upload.js';
 
 const router = express.Router();
@@ -41,9 +43,12 @@ router.post(
 // Route to register a guest
 router.post(
   '/register/guest',
-  mediaUpload, // Middleware to handle guest media uploads
+  mediaUpload2, // Middleware to handle guest media uploads
   handleUploadError, // Middleware to handle upload errors
   registerGuest
 );
+
+// Route to login
+router.post('/login', login); // Add the login route
 
 export default router;

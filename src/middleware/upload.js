@@ -2,6 +2,11 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
+import { fileURLToPath } from 'url';
+
+// Define __dirname for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Define storage configuration for different types of uploads
 const createStorage = (destination) => {
@@ -18,7 +23,7 @@ const createStorage = (destination) => {
     },
     filename: (req, file, cb) => {
       // Create unique filename with original extension
-      const uniqueFilename = `${uuidv4()}${path.extname(file.originalname)}`;
+      const uniqueFilename = `${Date.now()}-${file.originalname}`;
       cb(null, uniqueFilename);
     },
   });
@@ -35,7 +40,6 @@ const FILE_SIZE_LIMITS = {
 
 // File type validation
 const fileFilter = (req, file, cb) => {
-  // Allow images, PDFs, and specific document types
   const allowedMimeTypes = [
     'image/jpeg',
     'image/jpg',
@@ -71,8 +75,18 @@ export const venueUpload = multer({
   storage: createStorage('venues'),
   limits: { fileSize: FILE_SIZE_LIMITS.VENUE },
   fileFilter,
-}).array('venueImages', 10); // Allow up to 10 images for venues
-
+}).fields([
+  { name: 'venueImages', maxCount: 10 }, // Multiple venue images
+  { name: 'menuImages', maxCount: 1 },  // Single menu image
+]);
+export const mediaUpload2 = multer({
+  storage: createStorage('media'),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB file size limit
+  fileFilter,
+}).fields([
+  { name: 'image', maxCount: 1 }, // Single image file
+  { name: 'video', maxCount: 1 }, // Single video file
+]);
 export const blogUpload = multer({
   storage: createStorage('blog'),
   limits: { fileSize: FILE_SIZE_LIMITS.BLOG },
@@ -95,7 +109,6 @@ export const mediaUpload = multer({
 // Error handling middleware for upload errors
 export const handleUploadError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
-    // Handle Multer-specific errors
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({
         success: false,
@@ -107,7 +120,6 @@ export const handleUploadError = (err, req, res, next) => {
       message: `Upload error: ${err.message}`,
     });
   } else if (err) {
-    // Handle other errors
     return res.status(400).json({
       success: false,
       message: err.message || 'Error uploading file',

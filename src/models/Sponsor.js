@@ -7,6 +7,17 @@ const productSchema = new mongoose.Schema({
 });
 
 const sponsorSchema = new mongoose.Schema({
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
+    lowercase: true}
+    ,
+    password: {
+        type:String,
+        required:true,
+    },
   businessLogo: { type: String }, // store logo file URL/path
   businessBanner: { type: String }, // store banner file URL/path
 

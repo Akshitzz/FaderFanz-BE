@@ -2,12 +2,24 @@
 import mongoose from 'mongoose';
 
 const menuProductSchema = new mongoose.Schema({
+
   name: {type: String, required: true},
   price: {type: Number, required: true},
   image: {type :String , required :true}, // image file path
 });
 
 const VenueOwnerSchema = new mongoose.Schema({
+    email: {
+        type: String,
+        required: true,
+        unique: true,
+        trim: true,
+        lowercase: true}
+        ,
+        password: {
+            type:String,
+            required:true,
+        },
   venueName: {
     type: String,
     required: true
@@ -20,18 +32,11 @@ const VenueOwnerSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  venueImage: String, // uploaded image path
+  venueImage: [String], // uploaded image path
 
   contactPhone: {
     type: String,
     required: true
-  },
-  email: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
-    lowercase: true
   },
   website: String,
 

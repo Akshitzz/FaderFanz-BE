@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
 // import User from '../models/User.js';
 import VenueOwner from '../models/VenueOwner.js';
 import Sponsor from '../models/Sponsor.js';
@@ -16,6 +17,8 @@ export const registerSponsor = async (req, res) => {
       preferredEvents,
       sponsorshipExpectations,
       products,
+      email,
+      password,
     } = req.body;
 
     const businessLogo = req.files?.businessLogo?.[0]?.path;
@@ -29,11 +32,14 @@ export const registerSponsor = async (req, res) => {
       !role ||
       !preferredEvents ||
       !sponsorshipExpectations ||
-      !businessBanner ||
-      !businessLogo
+      !email ||
+      !password
     ) {
       return res.status(400).json({ error: 'Fill all the required fields' });
     }
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const sponsor = new Sponsor({
       businessName,
@@ -46,6 +52,8 @@ export const registerSponsor = async (req, res) => {
       products,
       businessLogo,
       businessBanner,
+      email,
+      password: hashedPassword, // Save the hashed password
     });
 
     await sponsor.save();
@@ -73,13 +81,19 @@ export const registerVenueOwner = async (req, res) => {
       email,
       website,
       hasMenu,
-      menuProducts, // this comes as a stringified JSON from frontend
+      menuProducts,
+      password,
     } = req.body;
 
-    const venueImage = req.files?.venueImage?.[0]?.path;
-    if (!venueName || !address || !gstInformation || !contactPhone || !email || !website || !hasMenu || !menuProducts || !venueImage) {
+    const venueImages = req.files?.venueImages?.map((file) => file.path);
+    const menuImages = req.files?.menuImages?.map((file) => file.path);
+
+    if (!venueName || !address || !gstInformation || !contactPhone || !email || !website || !hasMenu || !menuProducts || !venueImages || !password) {
       return res.status(400).json({ error: 'Fill all the required fields' });
     }
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     let menuData = [];
     if (hasMenu === 'true' && menuProducts) {
@@ -88,7 +102,7 @@ export const registerVenueOwner = async (req, res) => {
         menuData.push({
           name: product.name,
           price: product.price,
-          image: req.files?.menuImages?.[index]?.path || null,
+          image: menuImages?.[index] || null,
         });
       });
     }
@@ -97,12 +111,13 @@ export const registerVenueOwner = async (req, res) => {
       venueName,
       address,
       gstInformation,
-      venueImage,
+      venueImages,
       contactPhone,
       email,
       website,
       hasMenu: hasMenu === 'true',
       menuProducts: menuData,
+      password: hashedPassword, // Save the hashed password
     });
 
     await newVenue.save();
@@ -118,20 +133,24 @@ export const registerVenueOwner = async (req, res) => {
 
 export const registerCurator = async (req, res) => {
   try {
-    const { firstName, lastName, stageName, bio } = req.body;
+    const { firstName, lastName, stageName, bio, email, password } = req.body;
     const imagePaths = req.files ? req.files.map((file) => file.path) : [];
 
-    if (!firstName || !lastName || !bio || !stageName || imagePaths.length === 0) {
+    if (!firstName || !lastName || !bio || !stageName || imagePaths.length === 0 || !email || !password) {
       return res.status(400).json({ error: 'First name, stage name, last name, and bio are required.' });
     }
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const newCurator = new Curator({
       firstName,
       lastName,
       stageName,
+      email,
+      password: hashedPassword, // Save the hashed password
       bio,
       images: imagePaths,
-      user: req.user.id,
     });
 
     await newCurator.save();
@@ -152,27 +171,30 @@ export const registerCurator = async (req, res) => {
 
 export const registerGuest = async (req, res) => {
   try {
-    const { firstName, lastName, stageName, bio } = req.body;
+    const { firstName, lastName, stageName, bio, email, password } = req.body;
 
-    // Validate required fields
-    if (!firstName || !lastName || !bio || !stageName) {
+    if (!firstName || !lastName || !bio || !stageName || !email || !password) {
       return res.status(400).json({ message: 'First Name, Last Name, stageName, and bio are required' });
     }
 
-    // Prepare the data to be saved
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const guestData = {
       firstName,
       lastName,
       stageName,
       bio,
-      image: req.files?.image?.[0]?.path || null, // Store the image path if provided
-      video: req.files?.video?.[0]?.path || null, // Store the video path if provided
+      email,
+      password: hashedPassword, // Save the hashed password
+      image: req.files?.image?.[0]?.path || null,
+      video: req.files?.video?.[0]?.path || null,
     };
 
-    // Create a new Guest document
+// Create a new Guest document
     const newGuest = new Guest(guestData);
 
-    // Save the guest to the database
+// Save the guest to the database
     await newGuest.save();
 
     // Generate JWT
@@ -191,6 +213,62 @@ export const registerGuest = async (req, res) => {
     });
   }
 };
+
+export const login =async (req, res) => {
+  try{
+    const { email, password ,role} = req.body;
+    // validation
+    if(!email || !password || !role) {
+      return res.status(400).json({ message: 'Email, password, and role are required' });
+    }
+    // determine the modal to query based on role
+    let Model;
+    switch(role){
+      case 'sponsor':
+      Model = Sponsor;
+      break;
+      case 'venueOwner':
+      Model = VenueOwner;
+      break;
+      case 'curator':
+      Model = Curator;  
+      break;
+      case 'guest':
+      Model = Guest;
+      break;
+      default:
+      return res.status(400).json({ message: 'Invalid role' });
+    }
+      // Find the user by email
+      const user = await Model.findOne({ email });
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+  
+      // Check if the password matches (assuming passwords are hashed)
+      // const isMatch = await user.comparePassword(password); // Ensure your schema has a `comparePassword` method
+      // if (!isMatch) {
+      //   return res.status(401).json({ message: 'Invalid credentials' });
+      // }
+  
+      // Generate JWT
+      const token = jwt.sign({ id: user._id, role }, process.env.JWT_SECRET, { expiresIn: '24h' });
+  
+      res.status(200).json({
+        message: 'Login successful',
+        token,
+        user: {
+          id: user._id,
+          email: user.email,
+          role,
+        },
+      });      
+    
+  }catch(error) {
+    console.error('Error in login:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+}
 
 // export const getProfile = async (req, res) => {
 //   try {
