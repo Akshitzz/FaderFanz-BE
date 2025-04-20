@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import errorHandler from './src/middleware/error.js';
-
+import cors from 'cors'
 // Import routes
 import authRoutes from './src/routes/AuthRoutes.js';
 import userRoutes from './src/routes/UserRoutes.js';
@@ -24,6 +24,7 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(express.json());
+app.use(cors()); // Enable CORS for all routes
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 // Connect to MongoDB
