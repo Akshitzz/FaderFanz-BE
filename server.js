@@ -9,7 +9,7 @@ import authRoutes from './src/routes/AuthRoutes.js';
 import userRoutes from './src/routes/UserRoutes.js';
 import eventRoutes from './src/routes/EventRoutes.js';
 import venueRoutes from './src/routes/VenueRoutes.js';
-import blogRoutes from './src/routes/BLogRoutes.js';
+import blogRoutes from './src/routes/BlogRoutes.js';
 import storeRoutes from './src/routes/StoreRoutes.js';
 import crowdfundingRoutes from './src/routes/CrowdfundingRoutes.js';
 import paymentRoutes from './src/routes/PaymentRoutes.js';
