@@ -13,6 +13,7 @@ import {
   getRelatedPosts,
   searchPosts
 } from '../controllers/BlogController.js';
+import { protect } from '../middleware/auth.js'; // Import authentication middleware
 
 const router = express.Router();
 
@@ -23,22 +24,22 @@ router.get('/', getAllPosts);
 router.get('/:idOrSlug', getPost);
 
 // Route to create a new blog post (admin only)
-router.post('/', createPost);
+router.post('/', protect, createPost); // Apply `protect` middleware here
 
 // Route to update an existing blog post (admin or author only)
-router.put('/:id', updatePost);
+router.put('/:id', protect, updatePost);
 
 // Route to delete a blog post (admin or author only)
-router.delete('/:id', deletePost);
+router.delete('/:id', protect, deletePost);
 
 // Route to like/unlike a blog post
-router.post('/:id/like', likePost);
+router.post('/:id/like', protect, likePost);
 
 // Route to add a comment to a blog post
-router.post('/:id/comments', addComment);
+router.post('/:id/comments', protect, addComment);
 
 // Route to delete a comment from a blog post
-router.delete('/:id/comments/:commentId', deleteComment);
+router.delete('/:id/comments/:commentId', protect, deleteComment);
 
 // Route to get blog categories
 router.get('/categories', getCategories);

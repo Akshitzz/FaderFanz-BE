@@ -112,6 +112,8 @@ export const createPost = async (req, res) => {
     });
   }
   
+  // Debugging: Log the user object
+  console.log('User from req.user:', req.user);
   try {
     // Handle featured image upload
     let featuredImage = null;

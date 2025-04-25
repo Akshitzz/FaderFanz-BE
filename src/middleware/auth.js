@@ -1,6 +1,9 @@
-
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import Guest from '../models/Guest.js';
+import Sponsor from '../models/Sponsor.js';
+import Curator from '../models/Curator.js';
+import VenueOwner from '../models/VenueOwner.js';
 
 /**
  * Verify JWT token and add user to request object
@@ -15,9 +18,7 @@ export const protect = async (req, res, next) => {
       req.headers.authorization.startsWith('Bearer')
     ) {
       token = req.headers.authorization.split(' ')[1];
-    } 
-    // Check if token exists in cookies
-    else if (req.cookies && req.cookies.token) {
+    } else if (req.cookies && req.cookies.token) {
       token = req.cookies.token;
     }
 
@@ -25,46 +26,59 @@ export const protect = async (req, res, next) => {
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: 'Not authorized to access this route'
+        message: 'Not authorized to access this route',
       });
     }
 
-    try {
-      // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // Find user by id from decoded token
-      const user = await User.findById(decoded.id);
+    // Debugging: Log the decoded payload
+    console.log('Decoded Token:', decoded);
 
-      if (!user) {
-        return res.status(401).json({
-          success: false,
-          message: 'User not found with this ID'
-        });
-      }
+    // Determine the model to query based on the role
+    let Model;
+    switch (decoded.role) {
+      case 'guest':
+        Model = Guest;
+        break;
+      case 'sponsor':
+        Model = Sponsor;
+        break;
+      case 'curator':
+        Model = Curator;
+        break;
+      case 'venueOwner':
+        Model = VenueOwner;
+        break;
+      case 'admin':
+        Model = User;
+        break;
+      default:
+        return res.status(400).json({ message: 'Invalid role in token' });
+    }
 
-      // Check if user account is active
-      if (!user.isActive) {
-        return res.status(401).json({
-          success: false,
-          message: 'Your account has been deactivated'
-        });
-      }
+    // Find user by ID from decoded token
+    const user = await Model.findById(decoded.id);
 
-      // Add user to request object
-      req.user = user;
-      next();
-    } catch (error) {
+    if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Token is invalid or expired'
+        message: 'User not found with this ID',
       });
     }
+
+    // Debugging: Log the found user
+    console.log('User Found:', user);
+
+    // Add user to request object
+    req.user = user;
+    next();
   } catch (error) {
     console.error('Auth middleware error:', error);
     return res.status(500).json({
       success: false,
-      message: 'Server error in authentication'
+      message: 'Server error in authentication',
     });
   }
 };
