@@ -8,11 +8,12 @@ import {
   addCampaignUpdate,
   donateToCampaign
 } from '../controllers/CrowdFundingController.js';
+import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // Route to create a new crowdfunding campaign
-router.post('/', createCampaign);
+router.post('/', protect, createCampaign);
 
 // Route to get all campaigns for a specific event
 router.get('/event/:eventId', getCampaignsByEvent);
@@ -21,15 +22,15 @@ router.get('/event/:eventId', getCampaignsByEvent);
 router.get('/:id', getCampaignById);
 
 // Route to update a campaign
-router.put('/:id', updateCampaign);
+router.put('/:id', protect, updateCampaign);
 
 // Route to launch a campaign
-router.post('/:id/launch', launchCampaign);
+router.post('/:id/launch', protect, launchCampaign);
 
 // Route to add an update to a campaign
-router.post('/:id/updates', addCampaignUpdate);
+router.post('/:id/updates', protect, addCampaignUpdate);
 
 // Route to donate to a campaign
-router.post('/:id/donate', donateToCampaign);
+router.post('/:id/donate', protect, donateToCampaign);
 
 export default router;

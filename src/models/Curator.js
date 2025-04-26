@@ -17,6 +17,11 @@ const curatorSchema = new mongoose.Schema({
   stageName: { type: String },
   bio: { type: String, required: true },
   images: [{ type: String }], // Array of image URLs
+  role: {
+    type: String,
+    default: 'curator',
+    enum: ['curator']
+  }
 }, {
   timestamps: true,
 });
