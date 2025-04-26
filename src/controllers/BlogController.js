@@ -1,4 +1,3 @@
-
 import { validationResult } from 'express-validator';
 import BlogPost from '../models/BlogPost.js';
 import fs from 'fs';
@@ -495,23 +494,60 @@ export const deleteComment = async (req, res) => {
  */
 export const getCategories = async (req, res) => {
   try {
+    console.log('Checking for published posts...');
+    
+    // First check if there are any posts at all
+    const totalPosts = await BlogPost.countDocuments();
+    console.log('Total posts in database:', totalPosts);
+    
+    // Check for published posts
+    const publishedPosts = await BlogPost.countDocuments({ status: 'published' });
+    console.log('Published posts:', publishedPosts);
+    
+    if (publishedPosts === 0) {
+      return res.status(200).json({
+        success: true,
+        data: [],
+        message: 'No published posts found',
+        debug: {
+          totalPosts,
+          publishedPosts
+        }
+      });
+    }
+
+    // Log all published posts with their categories
+    const allPublishedPosts = await BlogPost.find({ status: 'published' }, 'category');
+    console.log('Published posts with categories:', allPublishedPosts);
+
     // Aggregate unique categories and count posts per category
     const categories = await BlogPost.aggregate([
       { $match: { status: 'published' } },
-      { $group: { _id: '$category', count: { $sum: 1 } } },
+      { $group: { 
+        _id: { $ifNull: ['$category', 'uncategorized'] },
+        count: { $sum: 1 }
+      }},
       { $sort: { count: -1 } }
     ]);
     
+    console.log('Aggregated categories:', categories);
+    
     res.status(200).json({
       success: true,
-      data: categories
+      data: categories,
+      debug: {
+        totalPosts,
+        publishedPosts,
+        allPublishedPosts
+      }
     });
   } catch (error) {
     console.error('Error fetching categories:', error);
     res.status(500).json({
       success: false,
       message: 'Server error while fetching categories',
-      error: error.message
+      error: error.message,
+      stack: error.stack
     });
   }
 };

@@ -20,37 +20,21 @@ const router = express.Router();
 // Route to get all blog posts
 router.get('/', getAllPosts);
 
-// Route to get a single blog post by ID or slug
-router.get('/:idOrSlug', getPost);
-
-// Route to create a new blog post (admin only)
-router.post('/', protect, createPost); // Apply `protect` middleware here
-
-// Route to update an existing blog post (admin or author only)
-router.put('/:id', protect, updatePost);
-
-// Route to delete a blog post (admin or author only)
-router.delete('/:id', protect, deletePost);
-
-// Route to like/unlike a blog post
-router.post('/:id/like', protect, likePost);
-
-// Route to add a comment to a blog post
-router.post('/:id/comments', protect, addComment);
-
-// Route to delete a comment from a blog post
-router.delete('/:id/comments/:commentId', protect, deleteComment);
-
-// Route to get blog categories
+// Specific routes should come before parameterized routes
 router.get('/categories', getCategories);
-
-// Route to get blog tags
 router.get('/tags', getTags);
+router.get('/search', searchPosts);
 
-// Route to get related posts
+// Parameterized routes
+router.get('/:idOrSlug', getPost);
 router.get('/:id/related', getRelatedPosts);
 
-// Route to search blog posts
-router.get('/search', searchPosts);
+// Protected routes
+router.post('/', protect, createPost);
+router.put('/:id', protect, updatePost);
+router.delete('/:id', protect, deletePost);
+router.post('/:id/like', protect, likePost);
+router.post('/:id/comments', protect, addComment);
+router.delete('/:id/comments/:commentId', protect, deleteComment);
 
 export default router;
