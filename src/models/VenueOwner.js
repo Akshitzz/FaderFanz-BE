@@ -20,6 +20,11 @@ const VenueOwnerSchema = new mongoose.Schema({
             type:String,
             required:true,
         },
+        role: {
+            type: String,
+            default: 'venueOwner',
+            enum: ['venueOwner']
+        },
   venueName: {
     type: String,
     required: true

@@ -13,8 +13,10 @@ import { protect } from '../middleware/auth.js';
 const router = express.Router();
 
 // Route to create a new crowdfunding campaign
-router.post('/', protect, createCampaign);
 
+
+// router.post('/', createCampaign);
+router.post('/', protect, createCampaign);
 // Route to get all campaigns for a specific event
 router.get('/event/:eventId', getCampaignsByEvent);
 
