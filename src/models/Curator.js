@@ -24,6 +24,40 @@ const curatorSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  // Posts field
+  posts: [{
+    content: { type: String, required: true },
+    media: [{ type: String }], // Array of media URLs
+    likes: { type: Number, default: 0 },
+    comments: [{
+      userId: { type: mongoose.Schema.Types.ObjectId },
+      content: { type: String },
+      createdAt: { type: Date, default: Date.now }
+    }],
+    createdAt: { type: Date, default: Date.now }
+  }],
+  // Rating and Reviews
+  ratings: [{
+    userId: { type: mongoose.Schema.Types.ObjectId },
+    rating: { 
+      type: Number, 
+      required: true,
+      min: 1,
+      max: 5
+    },
+    review: { type: String },
+    createdAt: { type: Date, default: Date.now }
+  }],
+  averageRating: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 5
+  },
+  totalRatings: {
+    type: Number,
+    default: 0
+  },
   role: {
     type: String,
     default: 'curator',

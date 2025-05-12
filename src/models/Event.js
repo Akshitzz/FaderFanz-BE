@@ -23,6 +23,65 @@ const EventSchema = new mongoose.Schema({
     type: Date,
     required: true
   },
+  startTime: {
+    type: String,
+    required: true
+  },
+  endTime: {
+    type: String,
+    required: true
+  },
+  calendarLink: {
+    type: String
+  },
+  tickets: [{
+    type: {
+      type: String,
+      required: true,
+      enum: ['Standard', 'VIP', 'Early Bird', 'Group', 'Other']
+    },
+    price: {
+      type: Number,
+      required: true
+    },
+    currency: {
+      type: String,
+      default: 'INR'
+    },
+    available: {
+      type: Number,
+      required: true
+    },
+    sold: {
+      type: Number,
+      default: 0
+    },
+    description: String
+  }],
+  location: {
+    address: {
+      type: String,
+      required: true
+    },
+    city: {
+      type: String,
+      required: true
+    },
+    state: {
+      type: String,
+      required: true
+    },
+    country: {
+      type: String,
+      required: true
+    },
+    postalCode: String,
+    landmark: String,
+    coordinates: {
+      latitude: Number,
+      longitude: Number
+    }
+  },
   creator: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -36,18 +95,6 @@ const EventSchema = new mongoose.Schema({
     type: String,
     enum: ['draft', 'published', 'cancelled', 'completed'],
     default: 'draft'
-  },
-  ticketPrice: {
-    type: Number,
-    default: 0
-  },
-  ticketsAvailable: {
-    type: Number,
-    default: 0
-  },
-  ticketsSold: {
-    type: Number,
-    default: 0
   },
   mediaFiles: [{
     type: String
@@ -65,4 +112,5 @@ const EventSchema = new mongoose.Schema({
     ref: 'User'
   }]
 }, { timestamps: true });
+
 export default mongoose.model('Event', EventSchema);

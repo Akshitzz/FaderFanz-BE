@@ -44,6 +44,52 @@ const sponsorSchema = new mongoose.Schema({
 
   products: [productSchema],
 
+  // Posts field
+  posts: [{
+    content: { type: String, required: true },
+    media: [{ type: String }], // Array of media URLs
+    likes: { type: Number, default: 0 },
+    comments: [{
+      userId: { type: mongoose.Schema.Types.ObjectId },
+      content: { type: String },
+      createdAt: { type: Date, default: Date.now }
+    }],
+    createdAt: { type: Date, default: Date.now }
+  }],
+  
+  // Events sponsored field
+  eventsSponsored: [{
+    eventId: { type: mongoose.Schema.Types.ObjectId, ref: 'Event' },
+    sponsorshipType: { type: String },
+    amount: { type: Number },
+    status: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected', 'completed'],
+      default: 'pending'
+    },
+    sponsoredAt: { type: Date, default: Date.now }
+  }],
+  
+  rating: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 5
+  },
+ 
+  eventsSponsoredCount: {
+    type: Number,
+    default: 0
+  },
+  followers: [{
+    type: mongoose.Schema.Types.ObjectId
+  }],
+  followersCount: {
+    type: Number,
+    default: 0
+  },
+ 
+
   createdAt: {
     type: Date,
     default: Date.now
