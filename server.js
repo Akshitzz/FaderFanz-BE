@@ -6,7 +6,7 @@ import errorHandler from './src/middleware/error.js';
 import cors from 'cors'
 // Import routes
 import authRoutes from './src/routes/AuthRoutes.js';
-// import userRoutes from './src/routes/UserRoutes.js';
+import userRoutes from './src/routes/UserRoutes.js';
 import eventRoutes from './src/routes/EventRoutes.js';
 import venueRoutes from './src/routes/VenueRoutes.js';
 import blogRoutes from './src/routes/BlogRoutes.js';
@@ -38,7 +38,7 @@ mongoose
 
 // Routes
 app.use('/auth', authRoutes);
-// app.use('/users', userRoutes);
+app.use('/users', userRoutes);
 app.use('/events', eventRoutes);
 app.use('/venues', venueRoutes);
 app.use('/blogs', blogRoutes);

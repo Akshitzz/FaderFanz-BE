@@ -261,11 +261,11 @@ export const login =async (req, res) => {
         return res.status(404).json({ message: 'User not found' });
       }
   
-      // Check if the password matches (assuming passwords are hashed)
-      // const isMatch = await user.comparePassword(password); // Ensure your schema has a `comparePassword` method
-      // if (!isMatch) {
-      //   return res.status(401).json({ message: 'Invalid credentials' });
-      // }
+      // Check if the password matches using bcrypt
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({ message: 'Invalid credentials' });
+      }
   
       // Generate JWT
       const token = jwt.sign({ id: user._id, role }, process.env.JWT_SECRET, { expiresIn: '24h' });
