@@ -16,14 +16,22 @@ export const registerSponsor = async (req, res) => {
       role,
       preferredEvents,
       sponsorshipExpectations,
-      products,
       email,
       password,
     } = req.body;
 
+    let products = [];
+    if (req.body.products) {
+      try {
+        products = JSON.parse(req.body.products);
+      } catch (error) {
+        return res.status(400).json({ error: 'Invalid products format' });
+      }
+    }
+
     const businessLogo = req.files?.businessLogo?.[0]?.path;
     const businessBanner = req.files?.businessBanner?.[0]?.path;
-
+    console.log("Recieved Data :",req.body);
     if (
       !businessName ||
       !taxIdentificationNumber ||
@@ -38,8 +46,16 @@ export const registerSponsor = async (req, res) => {
       return res.status(400).json({ error: 'Fill all the required fields' });
     }
 
-    // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Handle product images
+    const productImages = req.files?.productImages || [];
+
+    // Map product images to products
+    const productsWithImages = products.map((product, index) => ({
+      ...product,
+      image: productImages[index]?.path || null,
+    }));
 
     const sponsor = new Sponsor({
       businessName,
@@ -49,16 +65,15 @@ export const registerSponsor = async (req, res) => {
       role,
       preferredEvents,
       sponsorshipExpectations,
-      products,
+      products: productsWithImages,
       businessLogo,
       businessBanner,
       email,
-      password: hashedPassword, // Save the hashed password
+      password: hashedPassword,
     });
 
     await sponsor.save();
 
-    // Generate JWT
     const token = jwt.sign({ id: sponsor._id, role: 'sponsor' }, process.env.JWT_SECRET, { expiresIn: '24h' });
 
     res.status(201).json({
@@ -67,6 +82,7 @@ export const registerSponsor = async (req, res) => {
       token,
     });
   } catch (error) {
+    console.error('Registration error:', error);
     res.status(500).json({ message: 'Server Error', error: error.message });
   }
 };

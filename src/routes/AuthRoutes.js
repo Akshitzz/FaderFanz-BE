@@ -7,7 +7,7 @@ import {
   login, // Import the login function
 } from '../controllers/AuthController.js';
 import {
-  profileUpload,
+  sponsorUpload,
   venueUpload,
   mediaUpload,
   handleUploadError,
@@ -19,7 +19,7 @@ const router = express.Router();
 // Route to register a sponsor
 router.post(
   '/register/sponsor',
-  profileUpload, // Middleware to handle sponsor profile image uploads
+  sponsorUpload, // Middleware to handle sponsor profile image uploads
   handleUploadError, // Middleware to handle upload errors
   registerSponsor
 );

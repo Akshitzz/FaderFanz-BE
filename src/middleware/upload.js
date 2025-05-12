@@ -1,7 +1,7 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { v4 as uuidv4 } from 'uuid';
+
 import { fileURLToPath } from 'url';
 
 // Define __dirname for ES modules
@@ -57,6 +57,26 @@ const fileFilter = (req, file, cb) => {
     cb(new Error('Unsupported file format. Please upload a valid image, PDF, or document file.'), false);
   }
 };
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }
+});
+
+export const sponsorUpload = upload.fields([
+  { name: 'businessLogo', maxCount: 1 },
+  { name: 'businessBanner', maxCount: 1 },
+  { name: 'productImages', maxCount: 10 } // Allow up to 10 product images
+]);
 
 // Configure multer for specific types of uploads
 export const profileUpload = multer({
