@@ -17,6 +17,10 @@ const curatorSchema = new mongoose.Schema({
   stageName: { type: String },
   bio: { type: String, required: true },
   images: [{ type: String }], // Array of image URLs
+  followers: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
   role: {
     type: String,
     default: 'curator',
