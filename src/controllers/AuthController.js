@@ -104,7 +104,7 @@ export const registerVenueOwner = async (req, res) => {
     const venueImages = req.files?.venueImages?.map((file) => file.path);
     const menuImages = req.files?.menuImages?.map((file) => file.path);
 
-    if (!venueName || !address || !gstInformation || !contactPhone || !email || !website || !hasMenu || !menuProducts || !venueImages || !password) {
+    if (!venueName || !address || !gstInformation || !contactPhone || !email || !hasMenu || !menuProducts || !venueImages || !password) {
       return res.status(400).json({ error: 'Fill all the required fields' });
     }
 
