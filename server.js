@@ -15,6 +15,7 @@ import crowdfundingRoutes from './src/routes/CrowdfundingRoutes.js';
 import paymentRoutes from './src/routes/PaymentRoutes.js';
 import reviewRoutes from './src/routes/ReviewRoutes.js';
 import productRoutes from './src/routes/ProductRoutes.js'; // Import ProductRoutes
+import userManagementRoutes from './src/routes/UserManagementRoutes.js'; // Import new routes
 
 // Load environment variables
 dotenv.config();
@@ -47,6 +48,7 @@ app.use('/crowdfunding', crowdfundingRoutes);
 app.use('/payments', paymentRoutes);
 app.use('/reviews', reviewRoutes);
 app.use('/products', productRoutes); // Add ProductRoutes
+app.use('/management', userManagementRoutes); // Add new routes
 
 // Global error handler
 app.use(errorHandler);
