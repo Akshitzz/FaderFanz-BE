@@ -48,6 +48,25 @@ const curatorSchema = new mongoose.Schema({
     review: { type: String },
     createdAt: { type: Date, default: Date.now }
   }],
+  // Add ticket bookings field
+  ticketBookings: [{
+    event: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true },
+    tickets: [{
+      ticketId: mongoose.Schema.Types.ObjectId,
+      name: String,
+      quantity: Number,
+      unitPrice: Number,
+      totalPrice: Number
+    }],
+    totalAmount: Number,
+    bookingDate: { type: Date, default: Date.now },
+    paymentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Payment' },
+    status: {
+      type: String,
+      enum: ['pending', 'confirmed', 'cancelled'],
+      default: 'pending'
+    }
+  }],
   averageRating: {
     type: Number,
     default: 0,

@@ -1,5 +1,25 @@
 import mongoose from 'mongoose';
 
+const PhotoSchema = new mongoose.Schema({
+  url: {
+    type: String,
+    required: true
+  },
+  caption: String,
+  isFeatured: {
+    type: Boolean,
+    default: false
+  },
+  order: {
+    type: Number,
+    default: 0
+  },
+  uploadedAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
 const VenueSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -8,7 +28,7 @@ const VenueSchema = new mongoose.Schema({
   },
   owner: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'VenueOwner',
     required: true
   },
   location: {
@@ -39,7 +59,17 @@ const VenueSchema = new mongoose.Schema({
     required: true
   },
   amenities: [String],
-  images: [String],
+  gallery: {
+    photos: [PhotoSchema],
+    totalPhotos: {
+      type: Number,
+      default: 0
+    },
+    lastUpdated: {
+      type: Date,
+      default: Date.now
+    }
+  },
   description: {
     type: String,
     required: true
@@ -55,4 +85,14 @@ const VenueSchema = new mongoose.Schema({
     website: String
   }
 }, { timestamps: true });
+
+// Pre-save middleware to update gallery metadata
+VenueSchema.pre('save', function(next) {
+  if (this.isModified('gallery.photos')) {
+    this.gallery.totalPhotos = this.gallery.photos.length;
+    this.gallery.lastUpdated = new Date();
+  }
+  next();
+});
+
 export default mongoose.model('Venue', VenueSchema);

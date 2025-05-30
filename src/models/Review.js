@@ -8,7 +8,7 @@ const ReviewSchema = new mongoose.Schema({
   },
   reviewer: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'Curator',
     required: true
   },
   rating: {
@@ -24,12 +24,12 @@ const ReviewSchema = new mongoose.Schema({
   mediaFiles: [String],
   likes: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    ref: 'Curator'
   }],
   replies: [{
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
+      ref: 'Curator'
     },
     comment: String,
     createdAt: {

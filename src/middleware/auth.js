@@ -1,5 +1,4 @@
 import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
 import Guest from '../models/Guest.js';
 import Sponsor from '../models/Sponsor.js';
 import Curator from '../models/Curator.js';
@@ -50,9 +49,6 @@ export const protect = async (req, res, next) => {
         break;
       case 'venueOwner':
         Model = VenueOwner;
-        break;
-      case 'admin':
-        Model = User;
         break;
       default:
         return res.status(400).json({ message: 'Invalid role in token' });

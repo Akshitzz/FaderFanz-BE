@@ -1,10 +1,15 @@
-
 import Campaign from '../models/Campaign.js';
 import Event from '../models/Event.js';
 import Payment from '../models/Payment.js';
+
 export const createCampaign = async (req, res) => {
   try {
-    const { title, description, event, goal, startDate, endDate, rewards } = req.body;
+    // Check if file was uploaded
+    if (!req.file) {
+      return res.status(400).json({ message: 'Please upload a banner image' });
+    }
+
+    const { title, description, event, goal, startDate, endDate, category, rewards } = req.body;
 
     // Check if user can create campaigns
     const allowedRoles = ['sponsor', 'curator', 'admin'];
@@ -23,6 +28,16 @@ export const createCampaign = async (req, res) => {
       return res.status(403).json({ message: 'You can only create campaigns for your own events' });
     }
 
+    // Parse rewards if it's a string
+    let parsedRewards = rewards;
+    if (typeof rewards === 'string') {
+      try {
+        parsedRewards = JSON.parse(rewards);
+      } catch (error) {
+        return res.status(400).json({ message: 'Invalid rewards format' });
+      }
+    }
+
     // Set the event as crowdfunded
     await Event.findByIdAndUpdate(event, { isCrowdfunded: true });
 
@@ -31,11 +46,16 @@ export const createCampaign = async (req, res) => {
       description,
       creator: req.user.id,
       event,
-      goal,
+      goal: Number(goal),
       startDate,
       endDate,
-      rewards: rewards || [],
-      status: 'draft'
+      rewards: parsedRewards || [],
+      status: 'draft',
+      category,
+      banner: {
+        url: `/uploads/campaigns/${req.file.filename}`,
+        alt: title
+      }
     });
 
     await campaign.save();
@@ -45,6 +65,7 @@ export const createCampaign = async (req, res) => {
       campaign
     });
   } catch (error) {
+    console.error('Campaign creation error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -221,6 +242,126 @@ export const donateToCampaign = async (req, res) => {
       message: 'Donation successful',
       payment,
       campaign
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Get campaign statistics
+export const getCampaignStats = async (req, res) => {
+  try {
+    const stats = await Campaign.aggregate([
+      {
+        $facet: {
+          totalStats: [
+            {
+              $group: {
+                _id: null,
+                totalCampaigns: { $sum: 1 },
+                totalRaised: { $sum: '$amountRaised' },
+                totalGoal: { $sum: '$goal' },
+                avgProgress: { $avg: '$fundingProgress' },
+                totalDonors: { $sum: '$totalDonors' }
+              }
+            }
+          ],
+          activeStats: [
+            { $match: { status: 'active' } },
+            {
+              $group: {
+                _id: null,
+                activeCampaigns: { $sum: 1 },
+                activeRaised: { $sum: '$amountRaised' },
+                activeGoal: { $sum: '$goal' }
+              }
+            }
+          ],
+          categoryStats: [
+            {
+              $group: {
+                _id: '$category',
+                count: { $sum: 1 },
+                totalRaised: { $sum: '$amountRaised' }
+              }
+            }
+          ],
+          recentCampaigns: [
+            { $sort: { createdAt: -1 } },
+            { $limit: 5 },
+            {
+              $project: {
+                title: 1,
+                goal: 1,
+                amountRaised: 1,
+                fundingProgress: 1,
+                endDate: 1,
+                category: 1,
+                status: 1
+              }
+            }
+          ]
+        }
+      }
+    ]);
+
+    // Format the response
+    const [{ totalStats, activeStats, categoryStats, recentCampaigns }] = stats;
+    
+    res.json({
+      overview: {
+        ...totalStats[0],
+        ...activeStats[0]
+      },
+      categoryBreakdown: categoryStats,
+      recentCampaigns
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Get campaign details with creator info
+export const getCampaignDetails = async (req, res) => {
+  try {
+    const campaign = await Campaign.findById(req.params.id)
+      .populate('creator', 'firstName lastName username profileImage')
+      .populate('event', 'title description startDate endDate banner')
+      .populate('donors.user', 'firstName lastName username businessName businessLogo');
+    
+    if (!campaign) {
+      return res.status(404).json({ message: 'Campaign not found' });
+    }
+
+    // Calculate time remaining
+    const now = new Date();
+    const timeRemaining = campaign.endDate.getTime() - now.getTime();
+    const daysRemaining = Math.ceil(timeRemaining / (1000 * 60 * 60 * 24));
+
+    res.json({
+      ...campaign.toObject(),
+      daysRemaining,
+      creator: {
+        id: campaign.creator._id,
+        name: `${campaign.creator.firstName} ${campaign.creator.lastName}`,
+        username: campaign.creator.username,
+        profileImage: campaign.creator.profileImage
+      },
+      event: {
+        id: campaign.event._id,
+        title: campaign.event.title,
+        description: campaign.event.description,
+        startDate: campaign.event.startDate,
+        endDate: campaign.event.endDate,
+        banner: campaign.event.banner
+      },
+      donors: campaign.donors.map(donor => ({
+        id: donor.user._id,
+        name: donor.user.businessName || `${donor.user.firstName} ${donor.user.lastName}`,
+        logo: donor.user.businessLogo,
+        amount: donor.amount,
+        date: donor.date
+      }))
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });

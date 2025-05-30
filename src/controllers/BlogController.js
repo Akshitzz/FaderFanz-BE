@@ -111,13 +111,19 @@ export const createPost = async (req, res) => {
     });
   }
   
-  // Debugging: Log the user object
-  console.log('User from req.user:', req.user);
   try {
     // Handle featured image upload
     let featuredImage = null;
-    if (req.file) {
-      featuredImage = `/uploads/blog/${req.file.filename}`;
+    let contentImages = [];
+    
+    if (req.files) {
+      if (req.files.featuredImage && req.files.featuredImage[0]) {
+        featuredImage = `/uploads/blog/${req.files.featuredImage[0].filename}`;
+      }
+      
+      if (req.files.contentImages) {
+        contentImages = req.files.contentImages.map(file => `/uploads/blog/${file.filename}`);
+      }
     }
     
     const {
@@ -154,7 +160,8 @@ export const createPost = async (req, res) => {
       content,
       excerpt: excerpt || title.substring(0, 150) + '...',
       featuredImage,
-      author: req.user.id, // Assuming req.user is set by auth middleware
+      contentImages,
+      author: req.user.id,
       category,
       tags: parsedTags,
       relatedEvents: parsedEvents,
@@ -220,17 +227,36 @@ export const updatePost = async (req, res) => {
       status
     } = req.body;
     
-    // Handle featured image upload if there's a new one
+    // Handle image uploads if there are new ones
     let featuredImage = post.featuredImage;
-    if (req.file) {
-      // Delete old image if exists
-      if (post.featuredImage) {
-        const oldImagePath = path.join(__dirname, '../../', post.featuredImage);
-        if (fs.existsSync(oldImagePath)) {
-          fs.unlinkSync(oldImagePath);
+    let contentImages = post.contentImages || [];
+    
+    if (req.files) {
+      // Handle featured image
+      if (req.files.featuredImage && req.files.featuredImage[0]) {
+        // Delete old featured image if exists
+        if (post.featuredImage) {
+          const oldImagePath = path.join(__dirname, '../../', post.featuredImage);
+          if (fs.existsSync(oldImagePath)) {
+            fs.unlinkSync(oldImagePath);
+          }
         }
+        featuredImage = `/uploads/blog/${req.files.featuredImage[0].filename}`;
       }
-      featuredImage = `/uploads/blog/${req.file.filename}`;
+      
+      // Handle content images
+      if (req.files.contentImages) {
+        // Delete old content images if they exist
+        if (post.contentImages && post.contentImages.length > 0) {
+          post.contentImages.forEach(imagePath => {
+            const oldImagePath = path.join(__dirname, '../../', imagePath);
+            if (fs.existsSync(oldImagePath)) {
+              fs.unlinkSync(oldImagePath);
+            }
+          });
+        }
+        contentImages = req.files.contentImages.map(file => `/uploads/blog/${file.filename}`);
+      }
     }
     
     // Update slug only if title is changed
@@ -262,6 +288,7 @@ export const updatePost = async (req, res) => {
         content: content || post.content,
         excerpt: excerpt || (title ? title.substring(0, 150) + '...' : post.excerpt),
         featuredImage,
+        contentImages,
         category: category || post.category,
         tags: parsedTags || post.tags,
         relatedEvents: parsedEvents || post.relatedEvents,

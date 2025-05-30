@@ -18,6 +18,9 @@ export const registerSponsor = async (req, res) => {
       sponsorshipExpectations,
       email,
       password,
+      facebook,
+      instagram,
+      twitter
     } = req.body;
 
     let products = [];
@@ -43,7 +46,7 @@ export const registerSponsor = async (req, res) => {
       !email ||
       !password
     ) {
-      return res.status(400).json({ error: 'Fill all the required fields' });
+      return res.status(400).json({ error: 'Fill all the required fields including social media handles' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -70,6 +73,11 @@ export const registerSponsor = async (req, res) => {
       businessBanner,
       email,
       password: hashedPassword,
+      socialMedia: {
+        facebook,
+        instagram,
+        twitter
+      }
     });
 
     await sponsor.save();

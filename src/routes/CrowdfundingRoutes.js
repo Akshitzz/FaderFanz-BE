@@ -6,17 +6,53 @@ import {
   updateCampaign,
   launchCampaign,
   addCampaignUpdate,
-  donateToCampaign
+  donateToCampaign,
+  getCampaignStats,
+  getCampaignDetails
 } from '../controllers/CrowdFundingController.js';
 import { protect } from '../middleware/auth.js';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 
 const router = express.Router();
 
+// Configure multer for campaign banner uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = 'uploads/campaigns';
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only JPEG, JPG, PNG and WebP are allowed.'));
+    }
+  }
+});
+
+// Get campaign statistics
+router.get('/stats', getCampaignStats);
+
+// Get detailed campaign information
+router.get('/:id/details', getCampaignDetails);
+
 // Route to create a new crowdfunding campaign
+router.post('/', protect, upload.single('banner'), createCampaign);
 
-
-// router.post('/', createCampaign);
-router.post('/', protect, createCampaign);
 // Route to get all campaigns for a specific event
 router.get('/event/:eventId', getCampaignsByEvent);
 

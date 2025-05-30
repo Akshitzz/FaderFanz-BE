@@ -111,7 +111,10 @@ export const blogUpload = multer({
   storage: createStorage('blog'),
   limits: { fileSize: FILE_SIZE_LIMITS.BLOG },
   fileFilter,
-}).single('featuredImage');
+}).fields([
+  { name: 'featuredImage', maxCount: 1 },
+  { name: 'contentImages', maxCount: 10 } // Allow up to 10 content images
+]);
 
 export const productUpload = multer({
   storage: createStorage('products'),
@@ -125,6 +128,49 @@ export const mediaUpload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
   fileFilter,
 }).array('media', 10); // Allow up to 10 media files
+
+// Gallery photo upload configuration
+export const galleryUpload = multer({
+  storage: createStorage('venues/gallery'),
+  limits: { fileSize: FILE_SIZE_LIMITS.VENUE },
+  fileFilter: (req, file, cb) => {
+    // Only allow image files
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed for gallery'), false);
+    }
+  }
+}).array('photos', 20); // Allow up to 20 photos per upload
+
+// Gallery upload error handler
+export const handleGalleryUpload = (req, res, next) => {
+  galleryUpload(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({
+          message: 'File too large. Maximum size is 5MB'
+        });
+      }
+      if (err.code === 'LIMIT_FILE_COUNT') {
+        return res.status(400).json({
+          message: 'Too many files. Maximum is 20 photos per upload'
+        });
+      }
+      return res.status(400).json({
+        message: 'File upload error',
+        error: err.message
+      });
+    }
+    if (err) {
+      return res.status(400).json({
+        message: 'Invalid file type. Only images are allowed',
+        error: err.message
+      });
+    }
+    next();
+  });
+};
 
 // Error handling middleware for upload errors
 export const handleUploadError = (err, req, res, next) => {

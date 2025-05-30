@@ -6,7 +6,15 @@ import {
   updateVenue,
   deleteVenue
 } from '../controllers/VenueController.js';
+import {
+  addPhotos,
+  removePhotos,
+  updatePhotoDetails,
+  getGallery,
+  reorderPhotos
+} from '../controllers/VenueGalleryController.js';
 import { protect } from '../middleware/auth.js';
+import { handleGalleryUpload } from '../middleware/upload.js';
 
 const router = express.Router();
 
@@ -21,8 +29,13 @@ router.get('/:id', getVenueById);
 
 // Route to update a venue
 router.put('/:id', protect, updateVenue);
-
-// Route to delete a venue
 router.delete('/:id', protect, deleteVenue);
+
+// Gallery management routes
+router.get('/:id/gallery', getGallery);
+router.post('/:id/gallery', protect, handleGalleryUpload, addPhotos);
+router.delete('/:id/gallery', protect, removePhotos);
+router.put('/:id/gallery/reorder', protect, reorderPhotos);
+router.put('/:id/gallery/:photoId', protect, updatePhotoDetails);
 
 export default router;

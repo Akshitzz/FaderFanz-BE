@@ -11,7 +11,7 @@ const CampaignSchema = new mongoose.Schema({
   },
   creator: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'Curator',
     required: true
   },
   event: {
@@ -19,11 +19,22 @@ const CampaignSchema = new mongoose.Schema({
     ref: 'Event',
     required: true
   },
+  banner: {
+    url: {
+      type: String,
+      required: true
+    },
+    alt: String
+  },
   goal: {
     type: Number,
     required: true
   },
   amountRaised: {
+    type: Number,
+    default: 0
+  },
+  fundingProgress: {
     type: Number,
     default: 0
   },
@@ -48,7 +59,7 @@ const CampaignSchema = new mongoose.Schema({
   donors: [{
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
+      ref: 'Sponsor'
     },
     amount: Number,
     date: {
@@ -56,6 +67,10 @@ const CampaignSchema = new mongoose.Schema({
       default: Date.now
     }
   }],
+  totalDonors: {
+    type: Number,
+    default: 0
+  },
   updates: [{
     title: String,
     content: String,
@@ -63,6 +78,39 @@ const CampaignSchema = new mongoose.Schema({
       type: Date,
       default: Date.now
     }
-  }]
+  }],
+  mediaGallery: [{
+    url: String,
+    type: {
+      type: String,
+      enum: ['image', 'video'],
+      default: 'image'
+    },
+    caption: String
+  }],
+  category: {
+    type: String,
+    enum: ['charity', 'creative', 'emergency', 'community', 'education', 'other'],
+    required: true
+  },
+  tags: [String]
 }, { timestamps: true });
+
+// Pre-save middleware to update campaign statistics
+CampaignSchema.pre('save', function(next) {
+  if (this.isModified('donors') || this.isModified('amountRaised') || this.isModified('goal')) {
+    // Update total donors
+    this.totalDonors = this.donors.length;
+    
+    // Calculate funding progress percentage
+    this.fundingProgress = (this.amountRaised / this.goal) * 100;
+    
+    // Update status if goal is reached
+    if (this.amountRaised >= this.goal && this.status === 'active') {
+      this.status = 'completed';
+    }
+  }
+  next();
+});
+
 export default mongoose.model('Campaign', CampaignSchema);

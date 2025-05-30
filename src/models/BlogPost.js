@@ -11,10 +11,11 @@ const BlogPostSchema = new mongoose.Schema({
   },
   author: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'Curator',
     required: true
   },
   featuredImage: String,
+  contentImages: [String], // Array of image paths for images within the content
   category: {
     type: String,
     default: 'uncategorized'
@@ -36,13 +37,13 @@ const BlogPostSchema = new mongoose.Schema({
   likes: [{
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
+      ref: 'Curator'
     }
   }],
   comments: [{
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
+      ref: 'Curator'
     },
     content: {
       type: String,

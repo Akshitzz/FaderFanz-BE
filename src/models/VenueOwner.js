@@ -2,29 +2,28 @@
 import mongoose from 'mongoose';
 
 const menuProductSchema = new mongoose.Schema({
-
   name: {type: String, required: true},
   price: {type: Number, required: true},
-  image: {type :String , required :true}, // image file path
+  image: {type: String, required: true}, // image file path
 });
 
 const VenueOwnerSchema = new mongoose.Schema({
-    email: {
-        type: String,
-        required: true,
-        unique: true,
-        trim: true,
-        lowercase: true}
-        ,
-        password: {
-            type:String,
-            required:true,
-        },
-        role: {
-            type: String,
-            default: 'venueOwner',
-            enum: ['venueOwner']
-        },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
+    lowercase: true
+  },
+  password: {
+    type: String,
+    required: true,
+  },
+  role: {
+    type: String,
+    default: 'venueOwner',
+    enum: ['venueOwner']
+  },
   venueName: {
     type: String,
     required: true
@@ -38,18 +37,107 @@ const VenueOwnerSchema = new mongoose.Schema({
     required: true
   },
   venueImage: [String], // uploaded image path
-
   contactPhone: {
     type: String,
     required: true
   },
   website: String,
-
   hasMenu: {
     type: Boolean,
     default: false
   },
-  menuProducts: [menuProductSchema]
+  menuProducts: [menuProductSchema],
+  // New fields
+  about: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  rating: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 5
+  },
+  totalRatings: {
+    type: Number,
+    default: 0
+  },
+  reviews: [{
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Curator',
+      required: true
+    },
+    rating: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 5
+    },
+    comment: String,
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  followers: [{
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Curator',
+      required: true
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  totalFollowers: {
+    type: Number,
+    default: 0
+  },
+  socialMedia: {
+    facebook: String,
+    instagram: String,
+    twitter: String
+  },
+  coverImage: String,
+  profileImage: String,
+
+  // Add ticket bookings field
+  ticketBookings: [{
+    event: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true },
+    tickets: [{
+      ticketId: mongoose.Schema.Types.ObjectId,
+      name: String,
+      quantity: Number,
+      unitPrice: Number,
+      totalPrice: Number
+    }],
+    totalAmount: Number,
+    bookingDate: { type: Date, default: Date.now },
+    paymentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Payment' },
+    status: {
+      type: String,
+      enum: ['pending', 'confirmed', 'cancelled'],
+      default: 'pending'
+    }
+  }],
+
 }, { timestamps: true });
+
+// Pre-save middleware to update totals
+VenueOwnerSchema.pre('save', function(next) {
+  if (this.isModified('reviews')) {
+    const totalRatings = this.reviews.length;
+    const sumRatings = this.reviews.reduce((sum, review) => sum + review.rating, 0);
+    this.rating = totalRatings > 0 ? sumRatings / totalRatings : 0;
+    this.totalRatings = totalRatings;
+  }
+  if (this.isModified('followers')) {
+    this.totalFollowers = this.followers.length;
+  }
+  next();
+});
 
 export default mongoose.model('VenueOwner', VenueOwnerSchema);

@@ -13,7 +13,8 @@ import {
   getRelatedPosts,
   searchPosts
 } from '../controllers/BlogController.js';
-import { protect } from '../middleware/auth.js'; // Import authentication middleware
+import { protect } from '../middleware/auth.js';
+import { blogUpload, handleUploadError } from '../middleware/upload.js';
 
 const router = express.Router();
 
@@ -29,9 +30,9 @@ router.get('/search', searchPosts);
 router.get('/:idOrSlug', getPost);
 router.get('/:id/related', getRelatedPosts);
 
-// Protected routes
-router.post('/', protect, createPost);
-router.put('/:id', protect, updatePost);
+// Protected routes with file upload handling
+router.post('/', protect, blogUpload, handleUploadError, createPost);
+router.put('/:id', protect, blogUpload, handleUploadError, updatePost);
 router.delete('/:id', protect, deletePost);
 router.post('/:id/like', protect, likePost);
 router.post('/:id/comments', protect, addComment);

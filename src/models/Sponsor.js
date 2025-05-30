@@ -6,24 +6,79 @@ const productSchema = new mongoose.Schema({
   image: { type: String } // store image URL/path
 });
 
+const reviewSchema = new mongoose.Schema({
+  reviewer: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Guest',
+    required: true
+  },
+  rating: {
+    type: Number,
+    required: true,
+    min: 1,
+    max: 5
+  },
+  comment: {
+    type: String,
+    required: true
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
 const sponsorSchema = new mongoose.Schema({
   email: {
     type: String,
     required: true,
     unique: true,
     trim: true,
-    lowercase: true}
-    ,
-    password: {
-        type:String,
-        required:true,
-    },
+    lowercase: true
+  },
+  password: {
+    type: String,
+    required: true,
+  },
   businessLogo: { type: String }, // store logo file URL/path
   businessBanner: { type: String }, // store banner file URL/path
 
   businessName: { type: String, required: true },
   taxIdentificationNumber: { type: String, required: true },
-  description: { type: String ,required: true},
+  description: { type: String, required: true },
+
+  // Location fields
+  location: {
+    address: {
+      type: String,
+      required: true
+    },
+    city: {
+      type: String,
+      required: true
+    },
+    state: {
+      type: String,
+      required: true
+    },
+    country: {
+      type: String,
+      required: true
+    },
+    postalCode: String,
+    landmark: String,
+    coordinates: {
+      latitude: Number,
+      longitude: Number
+    }
+  },
+
+  // Social Media Handles
+  socialMedia: {
+    facebook: { type: String, required: true },
+    instagram: { type: String, required: true },
+    twitter: { type: String, required: true }
+  },
 
   contactName: { type: String, required: true },
   role: {
@@ -43,6 +98,9 @@ const sponsorSchema = new mongoose.Schema({
   }],
 
   products: [productSchema],
+
+  // Reviews field
+  reviews: [reviewSchema],
 
   // Posts field
   posts: [{
@@ -70,6 +128,26 @@ const sponsorSchema = new mongoose.Schema({
     sponsoredAt: { type: Date, default: Date.now }
   }],
   
+  // Add ticket bookings field
+  ticketBookings: [{
+    event: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true },
+    tickets: [{
+      ticketId: mongoose.Schema.Types.ObjectId,
+      name: String,
+      quantity: Number,
+      unitPrice: Number,
+      totalPrice: Number
+    }],
+    totalAmount: Number,
+    bookingDate: { type: Date, default: Date.now },
+    paymentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Payment' },
+    status: {
+      type: String,
+      enum: ['pending', 'confirmed', 'cancelled'],
+      default: 'pending'
+    }
+  }],
+
   rating: {
     type: Number,
     default: 0,
@@ -89,11 +167,26 @@ const sponsorSchema = new mongoose.Schema({
     default: 0
   },
  
-
   createdAt: {
     type: Date,
     default: Date.now
   }
+}, { timestamps: true });
+
+// Pre-save middleware to update counts
+sponsorSchema.pre('save', function(next) {
+  if (this.isModified('eventsSponsored')) {
+    this.eventsSponsoredCount = this.eventsSponsored.length;
+  }
+  if (this.isModified('followers')) {
+    this.followersCount = this.followers.length;
+  }
+  if (this.isModified('reviews')) {
+    const totalRatings = this.reviews.length;
+    const sumRatings = this.reviews.reduce((sum, review) => sum + review.rating, 0);
+    this.rating = totalRatings > 0 ? sumRatings / totalRatings : 0;
+  }
+  next();
 });
 
 export default mongoose.model('Sponsor', sponsorSchema);
