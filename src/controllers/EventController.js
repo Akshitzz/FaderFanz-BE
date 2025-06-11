@@ -53,7 +53,6 @@ export const createEvent = async (req, res) => {
       curator,
       location
     } = req.body;
-
     // Debug log to see what's being received
     console.log('Received event data:', {
       title,
@@ -150,7 +149,11 @@ export const createEvent = async (req, res) => {
     // Validate sponsors exist if specified
     let validatedSponsors = [];
     if (sponsors && sponsors.length > 0) {
-      const sponsorIds = Array.isArray(sponsors) ? sponsors : [sponsors];
+      // Clean up sponsor IDs - remove any extra quotes
+      const sponsorIds = Array.isArray(sponsors) 
+        ? sponsors.map(id => id.replace(/['"]+/g, ''))
+        : [sponsors.replace(/['"]+/g, '')];
+
       const existingSponsors = await Sponsor.find({ _id: { $in: sponsorIds } });
       
       if (existingSponsors.length !== sponsorIds.length) {

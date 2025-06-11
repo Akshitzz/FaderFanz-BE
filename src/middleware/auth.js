@@ -16,11 +16,12 @@ export const protect = async (req, res, next) => {
       req.headers.authorization &&
       req.headers.authorization.startsWith('Bearer')
     ) {
-      token = req.headers.authorization.split(' ')[1];
+      // Remove quotes and trim whitespace
+      token = req.headers.authorization.split(' ')[1].replace(/['"]+/g, '').trim();
     } else if (req.cookies && req.cookies.token) {
-      token = req.cookies.token;
+      // Remove quotes and trim whitespace
+      token = req.cookies.token.replace(/['"]+/g, '').trim();
     }
-
     // If no token found, return error
     if (!token) {
       return res.status(401).json({
