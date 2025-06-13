@@ -5,6 +5,12 @@ import {
   registerCurator,
   registerGuest,
   login, // Import the login function
+  changeEmail,
+  changePassword,
+  updateCuratorProfile,
+  updateSponsorProfile,
+  updateVenueOwnerProfile,
+  updateGuestProfile
 } from '../controllers/AuthController.js';
 import {
   sponsorUpload,
@@ -13,6 +19,7 @@ import {
   handleUploadError,
   mediaUpload2,
 } from '../middleware/upload.js';
+import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -50,5 +57,17 @@ router.post(
 
 // Route to login
 router.post('/login', login); // Add the login route
+
+// Route to change email
+router.put('/change-email', protect, changeEmail);
+
+// Route to change password
+router.put('/change-password', protect, changePassword);
+
+// Profile update routes
+router.put('/profile/curator', protect, mediaUpload, handleUploadError, updateCuratorProfile);
+router.put('/profile/sponsor', protect, sponsorUpload, handleUploadError, updateSponsorProfile);
+router.put('/profile/venue-owner', protect, venueUpload, handleUploadError, updateVenueOwnerProfile);
+router.put('/profile/guest', protect, mediaUpload2, handleUploadError, updateGuestProfile);
 
 export default router;
