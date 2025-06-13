@@ -139,10 +139,27 @@ export const createEvent = async (req, res) => {
     // Validate curators exist if specified
     let validatedCurators = [];
     if (curators && curators.length > 0) {
-      const curatorIds = Array.isArray(curators) 
-        ? curators.map(id => id.replace(/['"]+/g, ''))
-        : [curators.replace(/['"]+/g, '')];
-      
+      // Parse curator IDs if they're in string format
+      let curatorIds;
+      try {
+        curatorIds = typeof curators === 'string' 
+          ? JSON.parse(curators) 
+          : curators;
+      } catch (error) {
+        return res.status(400).json({ 
+          message: 'Invalid curator IDs format',
+          error: error.message 
+        });
+      }
+
+      // Ensure we have an array and clean the IDs
+      curatorIds = Array.isArray(curatorIds) 
+        ? curatorIds.map(id => id.toString().replace(/['"]+/g, '').trim())
+        : [curatorIds.toString().replace(/['"]+/g, '').trim()];
+
+      // Debug log
+      console.log('Cleaned curator IDs:', curatorIds);
+
       const existingCurators = await Curator.find({ _id: { $in: curatorIds } });
       
       if (existingCurators.length !== curatorIds.length) {
@@ -154,9 +171,26 @@ export const createEvent = async (req, res) => {
     // Validate sponsors exist if specified
     let validatedSponsors = [];
     if (sponsors && sponsors.length > 0) {
-      const sponsorIds = Array.isArray(sponsors) 
-        ? sponsors.map(id => id.replace(/['"]+/g, ''))
-        : [sponsors.replace(/['"]+/g, '')];
+      // Parse sponsor IDs if they're in string format
+      let sponsorIds;
+      try {
+        sponsorIds = typeof sponsors === 'string' 
+          ? JSON.parse(sponsors) 
+          : sponsors;
+      } catch (error) {
+        return res.status(400).json({ 
+          message: 'Invalid sponsor IDs format',
+          error: error.message 
+        });
+      }
+
+      // Ensure we have an array and clean the IDs
+      sponsorIds = Array.isArray(sponsorIds) 
+        ? sponsorIds.map(id => id.toString().replace(/['"]+/g, '').trim())
+        : [sponsorIds.toString().replace(/['"]+/g, '').trim()];
+
+      // Debug log
+      console.log('Cleaned sponsor IDs:', sponsorIds);
 
       const existingSponsors = await Sponsor.find({ _id: { $in: sponsorIds } });
       
