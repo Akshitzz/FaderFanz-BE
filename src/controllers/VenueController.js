@@ -8,19 +8,73 @@ export const createVenue = async (req, res) => {
 
     const {
       name, location, capacity, amenities,
-      images, description, availabilityCalendar, contactInformation
+      description, availabilityCalendar, contactInformation
     } = req.body;
+
+    // Parse JSON strings
+    let parsedLocation;
+    let parsedAvailabilityCalendar;
+    let parsedAmenities;
+    let parsedContactInformation;
+
+    try {
+      parsedLocation = typeof location === 'string' ? JSON.parse(location) : location;
+      parsedAvailabilityCalendar = typeof availabilityCalendar === 'string' ? JSON.parse(availabilityCalendar) : availabilityCalendar;
+      parsedAmenities = typeof amenities === 'string' ? JSON.parse(amenities) : amenities;
+      parsedContactInformation = typeof contactInformation === 'string' ? JSON.parse(contactInformation) : contactInformation;
+    } catch (error) {
+      return res.status(400).json({ message: 'Invalid JSON format in request body' });
+    }
+
+    // Validate required location fields
+    if (!parsedLocation.address || !parsedLocation.city || !parsedLocation.state || !parsedLocation.country) {
+      return res.status(400).json({ message: 'Location must include address, city, state, and country' });
+    }
+
+    // Validate images
+    if (!req.files?.venueImages || req.files.venueImages.length === 0) {
+      return res.status(400).json({ message: 'At least one venue image is required' });
+    }
+
+    // Validate image file types
+    const allowedImageTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+    const images = req.files.venueImages;
+
+    // Validate each image
+    for (const image of images) {
+      if (!allowedImageTypes.includes(image.mimetype)) {
+        return res.status(400).json({ message: 'Invalid image type. Only JPEG, PNG, and JPG are allowed' });
+      }
+    }
+
+    // Limit maximum number of images
+    const MAX_IMAGES = 10;
+    if (images.length > MAX_IMAGES) {
+      return res.status(400).json({ message: `Maximum ${MAX_IMAGES} images allowed` });
+    }
+
+    // Process images for gallery
+    const galleryPhotos = images.map((image, index) => ({
+      url: image.path,
+      caption: '',
+      isFeatured: index === 0, // First image is featured by default
+      order: index
+    }));
 
     const venue = new Venue({
       name,
       owner: req.user.id,
-      location,
-      capacity,
-      amenities,
-      images,
+      location: parsedLocation,
+      capacity: parseInt(capacity),
+      amenities: parsedAmenities,
       description,
-      availabilityCalendar,
-      contactInformation
+      gallery: {
+        photos: galleryPhotos,
+        totalPhotos: galleryPhotos.length,
+        lastUpdated: new Date()
+      },
+      availabilityCalendar: parsedAvailabilityCalendar,
+      contactInformation: parsedContactInformation
     });
 
     await venue.save();
@@ -30,6 +84,7 @@ export const createVenue = async (req, res) => {
       venue
     });
   } catch (error) {
+    console.error('Error in createVenue:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

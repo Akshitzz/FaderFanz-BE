@@ -109,12 +109,50 @@ export const registerVenueOwner = async (req, res) => {
       password,
     } = req.body;
 
-    const venueImages = req.files?.venueImages?.map((file) => file.path);
-    const menuImages = req.files?.menuImages?.map((file) => file.path);
-
-    if (!venueName || !address || !gstInformation || !contactPhone || !email || !hasMenu || !menuProducts || !venueImages || !password) {
+    // Validate required fields
+    if (!venueName || !address || !gstInformation || !contactPhone || !email || !hasMenu || !menuProducts || !password) {
       return res.status(400).json({ error: 'Fill all the required fields' });
     }
+
+    // Validate venue images
+    if (!req.files?.venueImages || req.files.venueImages.length === 0) {
+      return res.status(400).json({ error: 'At least one venue image is required' });
+    }
+
+    // Validate image file types
+    const allowedImageTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+    const venueImages = req.files.venueImages;
+    const menuImages = req.files?.menuImages || [];
+
+    // Validate venue images
+    for (const image of venueImages) {
+      if (!allowedImageTypes.includes(image.mimetype)) {
+        return res.status(400).json({ error: 'Invalid image type. Only JPEG, PNG, and JPG are allowed' });
+      }
+    }
+
+    // Validate menu images if they exist
+    for (const image of menuImages) {
+      if (!allowedImageTypes.includes(image.mimetype)) {
+        return res.status(400).json({ error: 'Invalid menu image type. Only JPEG, PNG, and JPG are allowed' });
+      }
+    }
+
+    // Limit maximum number of images
+    const MAX_VENUE_IMAGES = 10;
+    const MAX_MENU_IMAGES = 20;
+
+    if (venueImages.length > MAX_VENUE_IMAGES) {
+      return res.status(400).json({ error: `Maximum ${MAX_VENUE_IMAGES} venue images allowed` });
+    }
+
+    if (menuImages.length > MAX_MENU_IMAGES) {
+      return res.status(400).json({ error: `Maximum ${MAX_MENU_IMAGES} menu images allowed` });
+    }
+
+    // Map images to their paths
+    const venueImagePaths = venueImages.map(file => file.path);
+    const menuImagePaths = menuImages.map(file => file.path);
 
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -126,7 +164,7 @@ export const registerVenueOwner = async (req, res) => {
         menuData.push({
           name: product.name,
           price: product.price,
-          image: menuImages?.[index] || null,
+          image: menuImagePaths[index] || null,
         });
       });
     }
@@ -135,13 +173,13 @@ export const registerVenueOwner = async (req, res) => {
       venueName,
       address,
       gstInformation,
-      venueImages,
+      venueImages: venueImagePaths,
       contactPhone,
       email,
       website,
       hasMenu: hasMenu === 'true',
       menuProducts: menuData,
-      password: hashedPassword, // Save the hashed password
+      password: hashedPassword,
     });
 
     await newVenue.save();
@@ -151,6 +189,7 @@ export const registerVenueOwner = async (req, res) => {
 
     res.status(201).json({ message: 'Venue owner registered', data: newVenue, token });
   } catch (error) {
+    console.error('Error in registerVenueOwner:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
