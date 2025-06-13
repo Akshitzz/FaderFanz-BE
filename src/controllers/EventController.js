@@ -50,7 +50,7 @@ export const createEvent = async (req, res) => {
       tickets,
       isCrowdfunded,
       sponsors,
-      curator,
+      curators,
       location
     } = req.body;
     // Debug log to see what's being received
@@ -136,20 +136,24 @@ export const createEvent = async (req, res) => {
       }
     }
 
-    // Validate curator exists if specified
-    let eventCreator = req.user.id;
-    if (curator) {
-      const curatorExists = await Curator.findById(curator);
-      if (!curatorExists) {
-        return res.status(400).json({ message: 'Selected curator does not exist' });
+    // Validate curators exist if specified
+    let validatedCurators = [];
+    if (curators && curators.length > 0) {
+      const curatorIds = Array.isArray(curators) 
+        ? curators.map(id => id.replace(/['"]+/g, ''))
+        : [curators.replace(/['"]+/g, '')];
+      
+      const existingCurators = await Curator.find({ _id: { $in: curatorIds } });
+      
+      if (existingCurators.length !== curatorIds.length) {
+        return res.status(400).json({ message: 'One or more selected curators do not exist' });
       }
-      eventCreator = curator;
+      validatedCurators = curatorIds;
     }
 
     // Validate sponsors exist if specified
     let validatedSponsors = [];
     if (sponsors && sponsors.length > 0) {
-      // Clean up sponsor IDs - remove any extra quotes
       const sponsorIds = Array.isArray(sponsors) 
         ? sponsors.map(id => id.replace(/['"]+/g, ''))
         : [sponsors.replace(/['"]+/g, '')];
@@ -171,7 +175,8 @@ export const createEvent = async (req, res) => {
       endDate,
       startTime,
       endTime,
-      creator: eventCreator,
+      creator: req.user.id,
+      curators: validatedCurators,
       venue,
       eventType,
       tickets: eventType === 'ticketed' ? parsedTickets : [],
@@ -191,6 +196,7 @@ export const createEvent = async (req, res) => {
     // Populate the response with curator and sponsor details
     const populatedEvent = await Event.findById(event._id)
       .populate('creator', 'firstName lastName username profileImage stageName')
+      .populate('curators', 'firstName lastName username profileImage stageName')
       .populate('sponsors', 'businessName businessLogo')
       .populate('venue', 'name location');
 

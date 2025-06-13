@@ -153,6 +153,10 @@ const EventSchema = new mongoose.Schema({
     ref: 'Curator',
     required: true
   },
+  curators: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Curator'
+  }],
   venue: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Venue'
