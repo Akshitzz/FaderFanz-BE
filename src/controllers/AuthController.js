@@ -270,10 +270,10 @@ export const login =async (req, res) => {
       }
   
       // Check if the password matches using bcrypt
-      // const isPasswordValid = await bcrypt.compare(password, user.password);
-      // if (!isPasswordValid) {
-      //   return res.status(401).json({ message: 'Invalid credentials' });
-      // }
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({ message: 'Invalid credentials' });
+      }
   
       // Generate JWT
       const token = jwt.sign({ id: user._id, role }, process.env.JWT_SECRET, { expiresIn: '24h' });
