@@ -11,6 +11,14 @@ export const createCampaign = async (req, res) => {
 
     const { title, description, event, goal, startDate, endDate, category, rewards } = req.body;
 
+    // Check for required fields
+    if (!title || !description || !event || !goal || !startDate || !endDate || !category) {
+      return res.status(400).json({ 
+        message: 'Missing required fields',
+        required: ['title', 'description', 'event', 'goal', 'startDate', 'endDate', 'category']
+      });
+    }
+
     // Check if user can create campaigns
     const allowedRoles = ['sponsor', 'curator', 'admin'];
     if (!allowedRoles.includes(req.user.role)) {

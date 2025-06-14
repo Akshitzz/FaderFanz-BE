@@ -24,6 +24,16 @@ export const registerSponsor = async (req, res) => {
       location
     } = req.body;
 
+    // Check for required fields
+    if (!businessName || !taxIdentificationNumber || !description || !contactName || 
+        !role || !preferredEvents || !sponsorshipExpectations || !email || !password || !location) {
+      return res.status(400).json({ 
+        message: 'Missing required fields',
+        required: ['businessName', 'taxIdentificationNumber', 'description', 'contactName', 
+                  'role', 'preferredEvents', 'sponsorshipExpectations', 'email', 'password', 'location']
+      });
+    }
+
     let products = [];
     if (req.body.products) {
       try {
