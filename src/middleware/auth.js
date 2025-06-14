@@ -70,6 +70,7 @@ export const protect = async (req, res, next) => {
 
     // Add user to request object
     req.user = user;
+    req.user.role = decoded.role; // Ensure role is set on user object
     next();
   } catch (error) {
     console.error('Auth middleware error:', error);
