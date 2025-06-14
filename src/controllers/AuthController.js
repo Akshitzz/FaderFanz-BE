@@ -20,7 +20,8 @@ export const registerSponsor = async (req, res) => {
       password,
       facebook,
       instagram,
-      twitter
+      twitter,
+      location
     } = req.body;
 
     let products = [];
@@ -44,7 +45,8 @@ export const registerSponsor = async (req, res) => {
       !preferredEvents ||
       !sponsorshipExpectations ||
       !email ||
-      !password
+      !password,
+      !location 
     ) {
       return res.status(400).json({ error: 'Fill all the required fields including social media handles' });
     }
@@ -59,6 +61,12 @@ export const registerSponsor = async (req, res) => {
       ...product,
       image: productImages[index]?.path || null,
     }));
+
+    //location validation
+    const parsedLocation = JSON.parse(location);
+    if (!parsedLocation || !parsedLocation.address || !parsedLocation.city || !parsedLocation.state || !parsedLocation.country) {
+      return res.status(400).json({ error: 'Invalid location format' }); 
+    }
 
     const sponsor = new Sponsor({
       businessName,
@@ -77,7 +85,8 @@ export const registerSponsor = async (req, res) => {
         facebook,
         instagram,
         twitter
-      }
+      },
+      location: parsedLocation
     });
 
     await sponsor.save();
