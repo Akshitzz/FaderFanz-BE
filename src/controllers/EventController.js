@@ -287,12 +287,12 @@ export const getAllEvents = async (req, res) => {
         name: event.venue.name,
         location: event.venue.location
       } : null,
-      creator: {
+      creator: event.creator ? {
         id: event.creator._id,
         name: `${event.creator.firstName} ${event.creator.lastName}`,
         username: event.creator.username,
         profileImage: event.creator.profileImage
-      },
+      } : null,
       stats: {
         likes: event.totalLikes || 0,
         interested: event.totalInterested || 0

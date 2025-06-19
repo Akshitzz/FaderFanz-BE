@@ -1,10 +1,11 @@
 import Payment from '../models/Payment.js';
 import Event from '../models/Event.js';
 import Product from '../models/Product.js';
+import axios from 'axios';
 
 export const processTicketPayment = async (req, res) => {
   try {
-    const { eventId, quantity, paymentMethod } = req.body;
+    const { eventId, quantity, paymentMethod, email } = req.body;
     
     // Check if event exists
     const event = await Event.findById(eventId);
@@ -20,32 +21,46 @@ export const processTicketPayment = async (req, res) => {
     // Calculate amount
     const amount = event.ticketPrice * quantity;
 
-    // Process payment (simplified, in a real app would integrate with payment gateway)
+    // Create pending payment record
     const payment = new Payment({
       user: req.user.id,
       amount,
       paymentType: 'ticket',
-      status: 'completed', // In reality, this would be set after payment confirmation
-      paymentMethod,
+      status: 'pending',
+      paymentMethod: 'paystack',
       event: eventId
     });
-
     await payment.save();
 
-    // Update event with ticket sale
-    event.ticketsSold += quantity;
-    
-    // Add user to attendees if not already there
-    if (!event.attendees.includes(req.user.id)) {
-      event.attendees.push(req.user.id);
-    }
-    
-    await event.save();
+    // Initialize Paystack transaction
+    const paystackRes = await axios.post(
+      'https://api.paystack.co/transaction/initialize',
+      {
+        email: email, // must be provided in req.body
+        amount: Math.round(amount * 100), // Paystack expects amount in kobo
+        reference: payment._id.toString(),
+        metadata: {
+          eventId,
+          userId: req.user.id,
+          paymentId: payment._id.toString(),
+        }
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+          'Content-Type': 'application/json',
+        }
+      }
+    );
 
+    const { authorization_url } = paystackRes.data.data;
+
+    // Return payment link to frontend
     res.json({
-      message: 'Ticket purchase successful',
-      payment,
-      event
+      message: 'Proceed to payment',
+      paymentUrl: authorization_url,
+      paymentId: payment._id,
+      amount
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
