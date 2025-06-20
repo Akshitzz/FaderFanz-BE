@@ -696,4 +696,155 @@ export const getGuestProfile = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
+};
+
+// Helper to get Mongoose model by role string
+const getModelByRole = (role) => {
+  switch (role) {
+    case 'guest': return Guest;
+    case 'curator': return Curator;
+    case 'sponsor': return Sponsor;
+    case 'venueOwner': return VenueOwner;
+    default: return null;
+  }
+};
+
+// Follow a user
+export const followUser = async (req, res) => {
+  try {
+    const { id: userToFollowId, role: userToFollowRole } = req.params;
+    const { id: currentUserId, role: currentUserRole } = req.user;
+
+    if (userToFollowId === currentUserId) {
+      return res.status(400).json({ message: 'You cannot follow yourself.' });
+    }
+
+    const UserToFollowModel = getModelByRole(userToFollowRole);
+    const CurrentUserModel = getModelByRole(currentUserRole);
+
+    if (!UserToFollowModel || !CurrentUserModel) {
+      return res.status(400).json({ message: 'Invalid role specified.' });
+    }
+    
+    // Check if already following to prevent duplicate operations
+    const currentUser = await CurrentUserModel.findById(currentUserId).select('following');
+    if (currentUser.following.some(f => f.user.toString() === userToFollowId)) {
+      return res.status(400).json({ message: 'You are already following this user.' });
+    }
+
+    // Add current user to the target's followers list
+    await UserToFollowModel.findByIdAndUpdate(userToFollowId, {
+      $push: { followers: { user: currentUserId, role: currentUserRole } }
+    });
+
+    // Add target user to the current user's following list
+    const updatedUser = await CurrentUserModel.findByIdAndUpdate(currentUserId, 
+      { $push: { following: { user: userToFollowId, role: userToFollowRole } } },
+      { new: true }
+    ).select('following followingCount');
+
+    res.json({ message: 'Successfully followed user.', following: updatedUser.following, followingCount: updatedUser.followingCount });
+
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Unfollow a user
+export const unfollowUser = async (req, res) => {
+  try {
+    const { id: userToUnfollowId, role: userToUnfollowRole } = req.params;
+    const { id: currentUserId, role: currentUserRole } = req.user;
+
+    const UserToUnfollowModel = getModelByRole(userToUnfollowRole);
+    const CurrentUserModel = getModelByRole(currentUserRole);
+
+    if (!UserToUnfollowModel || !CurrentUserModel) {
+      return res.status(400).json({ message: 'Invalid role specified.' });
+    }
+
+    // Remove current user from the target's followers list
+    await UserToUnfollowModel.findByIdAndUpdate(userToUnfollowId, {
+      $pull: { followers: { user: currentUserId } }
+    });
+
+    // Remove target user from the current user's following list
+    const updatedUser = await CurrentUserModel.findByIdAndUpdate(currentUserId, 
+      { $pull: { following: { user: userToUnfollowId } } },
+      { new: true }
+    ).select('following followingCount');
+
+    res.json({ message: 'Successfully unfollowed user.', following: updatedUser.following, followingCount: updatedUser.followingCount });
+
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Get a user's followers
+export const getFollowers = async (req, res) => {
+  try {
+    const { id, role } = req.params;
+    const Model = getModelByRole(role);
+    if (!Model) return res.status(400).json({ message: 'Invalid role specified.' });
+
+    const user = await Model.findById(id).select('followers');
+    if (!user) return res.status(404).json({ message: 'User not found.' });
+
+    const followersDetails = await Promise.all(
+      user.followers.map(async (follower) => {
+        const FollowerModel = getModelByRole(follower.role);
+        const followerUser = await FollowerModel.findById(follower.user).select('firstName lastName businessName venueName profileImage image');
+        if (!followerUser) return null;
+
+        const name = followerUser.businessName || followerUser.venueName || `${followerUser.firstName} ${followerUser.lastName}`;
+        const profileImage = followerUser.profileImage || followerUser.image;
+
+        return {
+          id: follower.user,
+          role: follower.role,
+          name,
+          profileImage
+        };
+      })
+    );
+
+    res.json(followersDetails.filter(Boolean));
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Get a user's following list
+export const getFollowing = async (req, res) => {
+  try {
+    const { id, role } = req.params;
+    const Model = getModelByRole(role);
+    if (!Model) return res.status(400).json({ message: 'Invalid role specified.' });
+
+    const user = await Model.findById(id).select('following');
+    if (!user) return res.status(404).json({ message: 'User not found.' });
+
+    const followingDetails = await Promise.all(
+      user.following.map(async (followed) => {
+        const FollowedModel = getModelByRole(followed.role);
+        const followedUser = await FollowedModel.findById(followed.user).select('firstName lastName businessName venueName profileImage image');
+        if (!followedUser) return null;
+
+        const name = followedUser.businessName || followedUser.venueName || `${followedUser.firstName} ${followedUser.lastName}`;
+        const profileImage = followedUser.profileImage || followedUser.image;
+
+        return {
+          id: followed.user,
+          role: followed.role,
+          name,
+          profileImage
+        };
+      })
+    );
+
+    res.json(followingDetails.filter(Boolean));
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
 }; 

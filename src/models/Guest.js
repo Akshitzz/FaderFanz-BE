@@ -68,6 +68,18 @@ const GuestSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
   }],
 
+  // Follower/Following fields
+  followers: [{
+    user: { type: mongoose.Schema.Types.ObjectId, required: true },
+    role: { type: String, required: true, enum: ['guest', 'curator', 'sponsor', 'venueOwner'] }
+  }],
+  following: [{
+    user: { type: mongoose.Schema.Types.ObjectId, required: true },
+    role: { type: String, required: true, enum: ['guest', 'curator', 'sponsor', 'venueOwner'] }
+  }],
+  followersCount: { type: Number, default: 0 },
+  followingCount: { type: Number, default: 0 },
+
   // Favorites field
   favorites: [{
     type: { type: String, required: true, enum: ['event', 'product', 'venue'] },
@@ -75,5 +87,15 @@ const GuestSchema = new mongoose.Schema({
   }],
 
 }, { timestamps: true });
+
+GuestSchema.pre('save', function(next) {
+  if (this.isModified('followers')) {
+    this.followersCount = this.followers.length;
+  }
+  if (this.isModified('following')) {
+    this.followingCount = this.following.length;
+  }
+  next();
+});
 
 export default mongoose.model('Guest', GuestSchema);

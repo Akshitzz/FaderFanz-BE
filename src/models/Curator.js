@@ -18,12 +18,15 @@ const curatorSchema = new mongoose.Schema({
   bio: { type: String, required: true },
   images: [{ type: String }], // Array of image URLs
   followers: [{
-    type: mongoose.Schema.Types.ObjectId
+    user: { type: mongoose.Schema.Types.ObjectId, required: true },
+    role: { type: String, required: true, enum: ['guest', 'curator', 'sponsor', 'venueOwner'] }
   }],
-  followingCount: {
-    type: Number,
-    default: 0
-  },
+  following: [{
+    user: { type: mongoose.Schema.Types.ObjectId, required: true },
+    role: { type: String, required: true, enum: ['guest', 'curator', 'sponsor', 'venueOwner'] }
+  }],
+  followersCount: { type: Number, default: 0 },
+  followingCount: { type: Number, default: 0 },
   // Posts field
   posts: [{
     content: { type: String, required: true },
@@ -99,6 +102,16 @@ const curatorSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true,
+});
+
+curatorSchema.pre('save', function(next) {
+  if (this.isModified('followers')) {
+    this.followersCount = this.followers.length;
+  }
+  if (this.isModified('following')) {
+    this.followingCount = this.following.length;
+  }
+  next();
 });
 
 const Curator = mongoose.model('Curator', curatorSchema);

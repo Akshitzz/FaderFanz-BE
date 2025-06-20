@@ -73,17 +73,16 @@ const VenueOwnerSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
   }],
   followers: [{
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Curator',
-      required: true
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now
-    }
+    user: { type: mongoose.Schema.Types.ObjectId, required: true },
+    role: { type: String, required: true, enum: ['guest', 'curator', 'sponsor', 'venueOwner'] }
   }],
-  totalFollowers: {
+  following: [{
+    user: { type: mongoose.Schema.Types.ObjectId, required: true },
+    role: { type: String, required: true, enum: ['guest', 'curator', 'sponsor', 'venueOwner'] }
+  }],
+  followersCount: { type: Number, default: 0 },
+  followingCount: { type: Number, default: 0 },
+  totalFollowers: { // This seems redundant now, but leaving for compatibility if needed elsewhere
     type: Number,
     default: 0
   },
@@ -132,7 +131,11 @@ VenueOwnerSchema.pre('save', function(next) {
     this.totalRatings = totalRatings;
   }
   if (this.isModified('followers')) {
-    this.totalFollowers = this.followers.length;
+    this.followersCount = this.followers.length;
+    this.totalFollowers = this.followers.length; // Keep this in sync for now
+  }
+  if (this.isModified('following')) {
+    this.followingCount = this.following.length;
   }
   next();
 });

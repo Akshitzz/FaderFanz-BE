@@ -146,9 +146,18 @@ const sponsorSchema = new mongoose.Schema({
     default: 0
   },
   followers: [{
-    type: mongoose.Schema.Types.ObjectId
+    user: { type: mongoose.Schema.Types.ObjectId, required: true },
+    role: { type: String, required: true, enum: ['guest', 'curator', 'sponsor', 'venueOwner'] }
+  }],
+  following: [{
+    user: { type: mongoose.Schema.Types.ObjectId, required: true },
+    role: { type: String, required: true, enum: ['guest', 'curator', 'sponsor', 'venueOwner'] }
   }],
   followersCount: {
+    type: Number,
+    default: 0
+  },
+  followingCount: {
     type: Number,
     default: 0
   },
@@ -172,6 +181,9 @@ sponsorSchema.pre('save', function(next) {
   }
   if (this.isModified('followers')) {
     this.followersCount = this.followers.length;
+  }
+  if (this.isModified('following')) {
+    this.followingCount = this.following.length;
   }
   if (this.isModified('reviews')) {
     const totalRatings = this.reviews.length;
