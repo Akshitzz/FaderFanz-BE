@@ -83,7 +83,16 @@ const VenueSchema = new mongoose.Schema({
     email: String,
     phone: String,
     website: String
-  }
+  },
+  reviews: [{
+    reviewer: { type: mongoose.Schema.Types.ObjectId, refPath: 'reviews.reviewerModel', required: true },
+    reviewerModel: { type: String, required: true, enum: ['Guest', 'Curator', 'Sponsor', 'VenueOwner'] },
+    reviewerRole: { type: String, required: true, enum: ['guest', 'curator', 'sponsor', 'venueOwner'] },
+    reviewerName: { type: String, required: true },
+    rating: { type: Number, min: 1, max: 5 },
+    comment: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now }
+  }]
 }, { timestamps: true });
 
 // Pre-save middleware to update gallery metadata

@@ -15,6 +15,10 @@ import {
 } from '../controllers/VenueGalleryController.js';
 import { protect } from '../middleware/auth.js';
 import { venueUpload, handleUploadError } from '../middleware/upload.js';
+import {
+  getVenueReviews,
+  addVenueReview
+} from '../controllers/UserProfileController.js';
 
 const router = express.Router();
 
@@ -37,5 +41,10 @@ router.post('/:id/gallery', protect, venueUpload, addPhotos);
 router.delete('/:id/gallery', protect, removePhotos);
 router.put('/:id/gallery/reorder', protect, reorderPhotos);
 router.put('/:id/gallery/:photoId', protect, updatePhotoDetails);
+
+// Route to get all reviews for a venue
+router.get('/:id/reviews', getVenueReviews);
+// Route to add a review to a venue
+router.post('/:id/review', protect, addVenueReview);
 
 export default router;

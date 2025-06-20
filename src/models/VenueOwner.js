@@ -64,22 +64,13 @@ const VenueOwnerSchema = new mongoose.Schema({
     default: 0
   },
   reviews: [{
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Curator',
-      required: true
-    },
-    rating: {
-      type: Number,
-      required: true,
-      min: 1,
-      max: 5
-    },
-    comment: String,
-    createdAt: {
-      type: Date,
-      default: Date.now
-    }
+    reviewer: { type: mongoose.Schema.Types.ObjectId, refPath: 'reviews.reviewerModel', required: true },
+    reviewerModel: { type: String, required: true, enum: ['Guest', 'Curator', 'Sponsor', 'VenueOwner'] },
+    reviewerRole: { type: String, required: true, enum: ['guest', 'curator', 'sponsor', 'venueOwner'] },
+    reviewerName: { type: String, required: true },
+    rating: { type: Number, min: 1, max: 5 },
+    comment: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now }
   }],
   followers: [{
     user: {
@@ -122,6 +113,12 @@ const VenueOwnerSchema = new mongoose.Schema({
       enum: ['pending', 'confirmed', 'cancelled'],
       default: 'pending'
     }
+  }],
+
+  // Favorites field
+  favorites: [{
+    type: { type: String, required: true, enum: ['event', 'product', 'venue'] },
+    item: { type: mongoose.Schema.Types.ObjectId, required: true, refPath: 'favorites.type' }
   }],
 
 }, { timestamps: true });

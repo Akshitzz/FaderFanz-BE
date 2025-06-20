@@ -6,28 +6,6 @@ const productSchema = new mongoose.Schema({
   image: { type: String } // store image URL/path
 });
 
-const reviewSchema = new mongoose.Schema({
-  reviewer: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Guest',
-    required: true
-  },
-  rating: {
-    type: Number,
-    required: true,
-    min: 1,
-    max: 5
-  },
-  comment: {
-    type: String,
-    required: true
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
-});
-
 const sponsorSchema = new mongoose.Schema({
   email: {
     type: String,
@@ -100,7 +78,15 @@ const sponsorSchema = new mongoose.Schema({
   products: [productSchema],
 
   // Reviews field
-  reviews: [reviewSchema],
+  reviews: [{
+    reviewer: { type: mongoose.Schema.Types.ObjectId, refPath: 'reviews.reviewerModel', required: true },
+    reviewerModel: { type: String, required: true, enum: ['Guest', 'Curator', 'Sponsor', 'VenueOwner'] },
+    reviewerRole: { type: String, required: true, enum: ['guest', 'curator', 'sponsor', 'venueOwner'] },
+    reviewerName: { type: String, required: true },
+    rating: { type: Number, min: 1, max: 5 },
+    comment: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now }
+  }],
 
   // Posts field
   posts: [{
@@ -170,7 +156,13 @@ const sponsorSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
-  }
+  },
+
+  // Favorites field
+  favorites: [{
+    type: { type: String, required: true, enum: ['event', 'product', 'venue'] },
+    item: { type: mongoose.Schema.Types.ObjectId, required: true, refPath: 'favorites.type' }
+  }]
 }, { timestamps: true });
 
 // Pre-save middleware to update counts
