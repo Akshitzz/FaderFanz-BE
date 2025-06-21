@@ -7,6 +7,7 @@ import Event from '../models/Event.js';
 import Product from '../models/Product.js';
 import BlogPost from '../models/BlogPost.js';
 import Guest from '../models/Guest.js';
+import path from 'path';
 
 // Helper to format event with location, curator, sponsors, and products
 async function formatEvent(event) {
@@ -847,4 +848,147 @@ export const getFollowing = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
-}; 
+};
+
+export const createPost = async (req, res) => {
+  try {
+    const { text } = req.body;
+
+    // The user object is attached by the 'protect' middleware
+    const user = req.user;
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Process uploaded images
+    const images = req.files ? req.files.map(file => {
+      // Create a URL-friendly path relative to the 'uploads' directory
+      return path.join('posts', file.filename).replace(/\\/g, '/');
+    }) : [];
+
+    const newPost = {
+      text,
+      images,
+      createdAt: new Date(),
+    };
+
+    // Add the new post to the beginning of the user's posts array
+    user.posts.unshift(newPost);
+
+    // Save the updated user document
+    await user.save();
+
+    // Respond with success
+    res.status(201).json({
+      success: true,
+      message: 'Post created successfully',
+      data: user.posts[0], // Return the newly created post
+    });
+  } catch (error) {
+    console.error('Error creating post:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+};
+
+export const likePost = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const user = req.user;
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Find the user who owns the post
+    const postOwner = await findUserWithPost(postId);
+
+    if (!postOwner) {
+      return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+
+    const post = postOwner.posts.id(postId);
+
+    if (!post) {
+      return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+
+    // Check if the user has already liked the post
+    const likeIndex = post.likes.findIndex(like => like.user.toString() === user._id.toString());
+
+    if (likeIndex > -1) {
+      // Unlike the post
+      post.likes.splice(likeIndex, 1);
+    } else {
+      // Like the post
+      post.likes.push({ user: user._id, role: user.role });
+    }
+
+    await postOwner.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Post like status updated',
+      data: post,
+    });
+  } catch (error) {
+    console.error('Error liking post:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+};
+
+export const commentOnPost = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const { text } = req.body;
+    const user = req.user;
+
+    if (!user || !text) {
+      return res.status(400).json({ success: false, message: 'User and text are required' });
+    }
+
+    const postOwner = await findUserWithPost(postId);
+
+    if (!postOwner) {
+      return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+
+    const post = postOwner.posts.id(postId);
+
+    if (!post) {
+      return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+
+    const newComment = {
+      user: user._id,
+      role: user.role,
+      name: user.firstName ? `${user.firstName} ${user.lastName}` : user.businessName || user.venueName,
+      text,
+    };
+
+    post.comments.push(newComment);
+
+    await postOwner.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Comment added successfully',
+      data: post.comments,
+    });
+  } catch (error) {
+    console.error('Error commenting on post:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+};
+
+// Helper function to find a user who owns a specific post
+async function findUserWithPost(postId) {
+  const users = await Promise.all([
+    Guest.findOne({ 'posts._id': postId }),
+    Curator.findOne({ 'posts._id': postId }),
+    Sponsor.findOne({ 'posts._id': postId }),
+    VenueOwner.findOne({ 'posts._id': postId }),
+  ]);
+
+  return users.find(user => user !== null);
+} 

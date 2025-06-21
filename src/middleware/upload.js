@@ -143,6 +143,12 @@ export const galleryUpload = multer({
   }
 }).array('photos', 20); // Allow up to 20 photos per upload
 
+export const postUpload = multer({
+  storage: createStorage('posts'),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter,
+}).array('images', 5);
+
 // Gallery upload error handler
 export const handleGalleryUpload = (req, res, next) => {
   galleryUpload(req, res, (err) => {

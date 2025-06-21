@@ -29,15 +29,30 @@ const curatorSchema = new mongoose.Schema({
   followingCount: { type: Number, default: 0 },
   // Posts field
   posts: [{
-    content: { type: String, required: true },
-    media: [{ type: String }], // Array of media URLs
-    likes: { type: Number, default: 0 },
+    text: {
+      type: String,
+      required: false,
+    },
+    images: {
+      type: [String],
+      validate: [val => val.length <= 5, 'Images array can have at most 5 items'],
+      default: [],
+    },
+    likes: [{
+      user: { type: mongoose.Schema.Types.ObjectId, required: true },
+      role: { type: String, required: true, enum: ['guest', 'curator', 'sponsor', 'venueOwner'] }
+    }],
     comments: [{
-      userId: { type: mongoose.Schema.Types.ObjectId },
-      content: { type: String },
+      user: { type: mongoose.Schema.Types.ObjectId, required: true },
+      role: { type: String, required: true, enum: ['guest', 'curator', 'sponsor', 'venueOwner'] },
+      name: { type: String, required: true },
+      text: { type: String, required: true },
       createdAt: { type: Date, default: Date.now }
     }],
-    createdAt: { type: Date, default: Date.now }
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
   }],
   // Rating and Reviews
   ratings: [{

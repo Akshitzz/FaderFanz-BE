@@ -120,6 +120,33 @@ const VenueOwnerSchema = new mongoose.Schema({
     item: { type: mongoose.Schema.Types.ObjectId, required: true, refPath: 'favorites.type' }
   }],
 
+  posts: [{
+    text: {
+      type: String,
+      required: false,
+    },
+    images: {
+      type: [String],
+      validate: [val => val.length <= 5, 'Images array can have at most 5 items'],
+      default: [],
+    },
+    likes: [{
+      user: { type: mongoose.Schema.Types.ObjectId, required: true },
+      role: { type: String, required: true, enum: ['guest', 'curator', 'sponsor', 'venueOwner'] }
+    }],
+    comments: [{
+      user: { type: mongoose.Schema.Types.ObjectId, required: true },
+      role: { type: String, required: true, enum: ['guest', 'curator', 'sponsor', 'venueOwner'] },
+      name: { type: String, required: true },
+      text: { type: String, required: true },
+      createdAt: { type: Date, default: Date.now }
+    }],
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+  }],
+
 }, { timestamps: true });
 
 // Pre-save middleware to update totals

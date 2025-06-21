@@ -12,14 +12,18 @@ import {
   followUser,
   unfollowUser,
   getFollowers,
-  getFollowing
+  getFollowing,
+  createPost,
+  likePost,
+  commentOnPost
 } from '../controllers/UserProfileController.js';
 import { protect } from '../middleware/auth.js';
+import { postUpload } from '../middleware/upload.js';
 
 const router = express.Router();
 
 // Get venue owner profile with all related information
-router.get('/venue-owner/:id', protect, getVenueOwnerProfile);
+router.get('/venue-owner/:id', getVenueOwnerProfile);
 
 // Get sponsor profile with all related information
 router.get('/sponsor/:id', protect, getSponsorProfile);
@@ -38,6 +42,15 @@ router.get('/popular-event-owners', getPopularEventOwners);
 
 // Get current user's profile and related info
 router.get('/me', protect, getMe);
+
+// Create a new post
+router.post('/posts', protect, postUpload, createPost);
+
+// Like/Unlike a post
+router.post('/posts/:postId/like', protect, likePost);
+
+// Comment on a post
+router.post('/posts/:postId/comment', protect, commentOnPost);
 
 // Get all reviews for a user (public)
 router.get('/:role/:id/reviews', getUserReviews);
