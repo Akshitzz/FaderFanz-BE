@@ -1,17 +1,18 @@
 import mongoose from 'mongoose';
 
 const GuestSchema = new mongoose.Schema({
-    email: {
-        type: String,
-        required: true,
-        unique: true,
-        trim: true,
-        lowercase: true}
-        ,
-        password: {
-            type:String,
-            required:true,
-        },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
+    lowercase: true
+  }
+  ,
+  password: {
+    type: String,
+    required: true,
+  },
   firstName: {
     type: String,
     required: true,
@@ -115,7 +116,7 @@ const GuestSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
-GuestSchema.pre('save', function(next) {
+GuestSchema.pre('save', function (next) {
   if (this.isModified('followers')) {
     this.followersCount = this.followers.length;
   }

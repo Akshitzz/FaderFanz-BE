@@ -1,17 +1,18 @@
 import mongoose from 'mongoose';
 
 const curatorSchema = new mongoose.Schema({
-    email: {
-        type: String,
-        required: true,
-        unique: true,
-        trim: true,
-        lowercase: true}
-        ,
-        password: {
-            type:String,
-            required:true,
-        },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
+    lowercase: true
+  }
+  ,
+  password: {
+    type: String,
+    required: true,
+  },
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },
   stageName: { type: String },
@@ -57,8 +58,8 @@ const curatorSchema = new mongoose.Schema({
   // Rating and Reviews
   ratings: [{
     userId: { type: mongoose.Schema.Types.ObjectId },
-    rating: { 
-      type: Number, 
+    rating: {
+      type: Number,
       required: true,
       min: 1,
       max: 5
@@ -119,7 +120,7 @@ const curatorSchema = new mongoose.Schema({
   timestamps: true,
 });
 
-curatorSchema.pre('save', function(next) {
+curatorSchema.pre('save', function (next) {
   if (this.isModified('followers')) {
     this.followersCount = this.followers.length;
   }

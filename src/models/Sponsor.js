@@ -61,8 +61,13 @@ const sponsorSchema = new mongoose.Schema({
   contactName: { type: String, required: true },
   role: {
     type: String,
+    default: 'sponsor',
+    immutable: true // This field should not be changed
+  },
+  businessRole: {
+    type: String,
     enum: ['owner', 'manager', 'representative'],
-    required: true
+    required: false
   },
 
   preferredEvents: [{
@@ -115,7 +120,7 @@ const sponsorSchema = new mongoose.Schema({
       default: Date.now,
     },
   }],
-  
+
   // Events sponsored field
   eventsSponsored: [{
     eventId: { type: mongoose.Schema.Types.ObjectId, ref: 'Event' },
@@ -128,7 +133,7 @@ const sponsorSchema = new mongoose.Schema({
     },
     sponsoredAt: { type: Date, default: Date.now }
   }],
-  
+
   // Add ticket bookings field
   ticketBookings: [{
     event: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true },
@@ -155,7 +160,7 @@ const sponsorSchema = new mongoose.Schema({
     min: 0,
     max: 5
   },
- 
+
   eventsSponsoredCount: {
     type: Number,
     default: 0
@@ -176,7 +181,7 @@ const sponsorSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
- 
+
   createdAt: {
     type: Date,
     default: Date.now
@@ -190,7 +195,7 @@ const sponsorSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Pre-save middleware to update counts
-sponsorSchema.pre('save', function(next) {
+sponsorSchema.pre('save', function (next) {
   if (this.isModified('eventsSponsored')) {
     this.eventsSponsoredCount = this.eventsSponsored.length;
   }

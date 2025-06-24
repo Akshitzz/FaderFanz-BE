@@ -56,7 +56,7 @@ export const protect = async (req, res, next) => {
     }
 
     // Find user by ID from decoded token
-    const user = await Model.findById(decoded.id);
+    const user = await Model.findById(decoded.id).select('+password');
 
     if (!user) {
       return res.status(401).json({
@@ -125,7 +125,7 @@ export const checkOwnership = (getResourceUserId) => {
 
       // Get the resource owner's ID using the provided function
       const resourceUserId = await getResourceUserId(req);
-      
+
       // If no resource owner ID found, move to next middleware
       // This allows for creation routes where there is no owner yet
       if (!resourceUserId) {

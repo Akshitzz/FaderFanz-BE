@@ -51,6 +51,29 @@ async function formatEvent(event) {
   };
 }
 
+// Helper to extract display name for any user type
+function extractDisplayName(u) {
+  if (!u) return 'Unknown';
+
+  // Prioritize full name for any user type that has it
+  if (u.firstName && u.lastName) {
+    return `${u.firstName} ${u.lastName}`;
+  }
+
+  // Fallback to other name fields based on what's available
+  if (u.businessName) {
+    return u.businessName;
+  }
+  if (u.venueName) {
+    return u.venueName;
+  }
+  if (u.stageName) {
+    return u.stageName;
+  }
+
+  return u.name || 'Unknown'; // Final fallback
+}
+
 // Get venue owner profile with all related information
 export const getVenueOwnerProfile = async (req, res) => {
   try {
@@ -365,118 +388,114 @@ export const getMe = async (req, res) => {
     if (!userId || !role) {
       return res.status(400).json({ message: 'User ID or role missing from token' });
     }
-    if (role === 'venueOwner') {
-      // Venue Owner logic (reuse getVenueOwnerProfile logic)
-      const venueOwner = await VenueOwner.findById(userId).select('-password');
-      if (!venueOwner) {
-        return res.status(404).json({ message: 'Venue owner not found' });
-      }
 
-      // Correctly fetch venues and their associated events
-      const venuesRaw = await Venue.find({ owner: userId }).populate('reviews');
-      const venues = await Promise.all(venuesRaw.map(async (venue) => {
-        const events = await Event.find({ venue: venue._id }).sort({ startDate: -1 });
-        const formattedEvents = await Promise.all(events.map(formatEvent));
-        return {
-          venue,
-          events: formattedEvents
-        };
-      }));
-
-      const venueIds = venuesRaw.map(venue => venue._id);
-      const reviews = await Review.find({ venue: { $in: venueIds } })
-        .populate('reviewer', 'firstName lastName profileImage')
-        .sort({ createdAt: -1 });
-
-      const averageRating = reviews.length > 0 ? reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length : 0;
-      return res.json({
-        success: true,
-        data: {
-          profile: venueOwner,
-          venues, // venues will be an array of { venue, events: [...] }
-          reviews,
-          stats: {
-            totalVenues: venues.length,
-            totalReviews: reviews.length,
-            totalEvents: venues.reduce((acc, v) => acc + v.events.length, 0),
-            averageRating
-          }
-        }
-      });
-    } else if (role === 'sponsor') {
-      // Sponsor logic (reuse getSponsorProfile logic)
-      const sponsor = await Sponsor.findById(userId)
-        .select('-password')
-        .populate('reviews.reviewer', 'firstName lastName profileImage');
-      if (!sponsor) {
-        return res.status(404).json({ message: 'Sponsor not found' });
-      }
-      const products = await Product.find({ owner: userId }).populate('reviews').sort({ createdAt: -1 });
-      let events = await Event.find({ sponsors: userId }).sort({ startDate: -1 });
-      events = await Promise.all(events.map(formatEvent));
-      const blogPosts = await BlogPost.find({ author: userId }).populate('comments').sort({ createdAt: -1 });
-      const averageRating = sponsor.reviews.length > 0 ? sponsor.reviews.reduce((acc, review) => acc + review.rating, 0) / sponsor.reviews.length : 0;
-      return res.json({
-        success: true,
-        data: {
-          profile: sponsor,
-          products,
-          events,
-          blogPosts,
-          reviews: sponsor.reviews,
-          stats: {
-            totalProducts: products.length,
-            totalEvents: events.length,
-            totalBlogPosts: blogPosts.length,
-            totalReviews: sponsor.reviews.length,
-            averageRating
-          }
-        }
-      });
-    } else if (role === 'curator') {
-      // Curator logic (reuse getCuratorProfile logic)
-      const curator = await Curator.findById(userId).select('-password');
-      if (!curator) {
-        return res.status(404).json({ message: 'Curator not found' });
-      }
-      let events = await Event.find({ creator: userId }).sort({ startDate: -1 });
-      events = await Promise.all(events.map(formatEvent));
-      const blogPosts = await BlogPost.find({ author: userId }).populate('comments').sort({ createdAt: -1 });
-      const reviews = await Review.find({ curator: userId })
-        .populate('reviewer', 'firstName lastName profileImage')
-        .sort({ createdAt: -1 });
-      const averageRating = reviews.length > 0 ? reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length : 0;
-      return res.json({
-        success: true,
-        data: {
-          profile: curator,
-          events,
-          blogPosts,
-          reviews,
-          stats: {
-            totalEvents: events.length,
-            totalBlogPosts: blogPosts.length,
-            totalReviews: reviews.length,
-            averageRating
-          }
-        }
-      });
-    } else if (role === 'guest') {
-      // Guest logic: just return guest profile (excluding password)
-      const guest = await Guest.findById(userId).select('-password');
-      if (!guest) {
-        return res.status(404).json({ message: 'Guest not found' });
-      }
-      return res.json({
-        success: true,
-        data: {
-          profile: guest
-        }
-      });
-    } else {
+    const CurrentUserModel = getModelByRole(role);
+    if (!CurrentUserModel) {
       return res.status(400).json({ message: 'Invalid user role' });
     }
+
+    const user = await CurrentUserModel.findById(userId).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // --- Data cleanup: Find and permanently remove empty posts ---
+    const originalPostCount = (user.posts || []).length;
+    const validPosts = (user.posts || []).filter(p => (p.text && p.text.trim() !== '') || (p.images && p.images.length > 0));
+
+    if (validPosts.length < originalPostCount) {
+      user.posts = validPosts;
+      await user.save();
+    }
+    // --- End of data cleanup ---
+
+    // --- Fetch associated events based on user role ---
+    let events = [];
+    if (role === 'curator') {
+      events = await Event.find({ creator: userId }).sort({ startDate: -1 });
+    } else if (role === 'venueOwner') {
+      const venues = await Venue.find({ owner: userId }).select('_id');
+      const venueIds = venues.map(v => v._id);
+      events = await Event.find({ venue: { $in: venueIds } }).sort({ startDate: -1 });
+    } else if (role === 'sponsor') {
+      const sponsoredEventIds = user.eventsSponsored.map(e => e.eventId);
+      events = await Event.find({ _id: { $in: sponsoredEventIds } }).sort({ startDate: -1 });
+    } else if (role === 'guest') {
+      const eventIds = (user.ticketBookings || []).map(booking => booking.event);
+      events = await Event.find({ _id: { $in: eventIds } }).sort({ startDate: -1 });
+    }
+    // --- End of event fetching ---
+
+    // Manually populate 'following' to ensure correct data is fetched
+    const following = await Promise.all(
+      (user.following || []).map(async (followed) => {
+        const FollowedModel = getModelByRole(followed.role);
+        if (!FollowedModel) return null;
+
+        const followedUser = await FollowedModel.findById(followed.user)
+          .select('firstName lastName businessName venueName contactName stageName name role profileImage image businessLogo')
+          .lean(); // .lean() for faster, plain JS objects
+
+        if (!followedUser) return null;
+
+        return {
+          _id: followedUser._id,
+          name: extractDisplayName(followedUser),
+          role: followed.role || followedUser.role,
+          image: followedUser.profileImage || followedUser.image || followedUser.businessLogo || null,
+        };
+      })
+    );
+
+    // Manually populate 'followers'
+    const followers = await Promise.all(
+      (user.followers || []).map(async (follower) => {
+        const FollowerModel = getModelByRole(follower.role);
+        if (!FollowerModel) return null;
+
+        const followerUser = await FollowerModel.findById(follower.user)
+          .select('firstName lastName businessName venueName contactName stageName name role profileImage image businessLogo')
+          .lean();
+
+        if (!followerUser) return null;
+
+        return {
+          _id: followerUser._id,
+          name: extractDisplayName(followerUser),
+          role: follower.role || followerUser.role,
+          image: followerUser.profileImage || followerUser.image || followerUser.businessLogo || null,
+        };
+      })
+    );
+
+    // Format the user's posts to include author details for the feed, and filter out empty ones
+    const feed = (user.posts || [])
+      .filter(post => (post.text && post.text.trim()) || (post.images && post.images.length > 0))
+      .map(post => ({
+        ...post.toObject(),
+        author: {
+          _id: user._id,
+          name: extractDisplayName(user),
+          profileImage: user.profileImage || user.image || user.businessLogo,
+          role: user.role,
+        }
+      }));
+
+    return res.json({
+      success: true,
+      data: {
+        profile: user.toObject(), // Use toObject() because we didn't use .lean() on the main user
+        following: following.filter(Boolean),
+        followers: followers.filter(Boolean),
+        feed, // Include the formatted posts in the response
+        events, // <-- Add events to the response
+        followingCount: (user.following || []).length,
+        followersCount: (user.followers || []).length,
+      }
+    });
   } catch (error) {
+    console.error(`Error in getMe for user ${req.user.id}:`, error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -526,7 +545,7 @@ export const addUserReview = async (req, res) => {
       case 'venueOwner': Model = VenueOwner; break;
       default: return res.status(400).json({ message: 'Invalid role for user being reviewed' });
     }
-    
+
     switch (reviewerUser.role) {
       case 'guest': reviewerModel = Guest; break;
       case 'curator': reviewerModel = Curator; break;
@@ -539,7 +558,7 @@ export const addUserReview = async (req, res) => {
     if (!userToReview) {
       return res.status(404).json({ message: 'User to review not found' });
     }
-    
+
     const reviewer = await reviewerModel.findById(reviewerUser.id);
     if (!reviewer) {
       return res.status(404).json({ message: 'Reviewer not found' });
@@ -563,7 +582,7 @@ export const addUserReview = async (req, res) => {
       comment,
       createdAt: new Date()
     };
-    
+
     const updatedUser = await Model.findByIdAndUpdate(
       id,
       { $push: { reviews: newReview } },
@@ -608,7 +627,7 @@ export const addVenueReview = async (req, res) => {
     if (venue.owner.toString() === reviewerUser.id && reviewerUser.role === 'venueOwner') {
       return res.status(400).json({ message: 'You cannot review your own venue' });
     }
-    
+
     let reviewerModel;
     switch (reviewerUser.role) {
       case 'guest': reviewerModel = Guest; break;
@@ -641,7 +660,7 @@ export const addVenueReview = async (req, res) => {
       comment,
       createdAt: new Date()
     };
-    
+
     const updatedVenue = await Venue.findByIdAndUpdate(
       id,
       { $push: { reviews: newReview } },
@@ -726,7 +745,7 @@ export const followUser = async (req, res) => {
     if (!UserToFollowModel || !CurrentUserModel) {
       return res.status(400).json({ message: 'Invalid role specified.' });
     }
-    
+
     // Check if already following to prevent duplicate operations
     const currentUser = await CurrentUserModel.findById(currentUserId).select('following');
     if (currentUser.following.some(f => f.user.toString() === userToFollowId)) {
@@ -739,7 +758,7 @@ export const followUser = async (req, res) => {
     });
 
     // Add target user to the current user's following list
-    const updatedUser = await CurrentUserModel.findByIdAndUpdate(currentUserId, 
+    const updatedUser = await CurrentUserModel.findByIdAndUpdate(currentUserId,
       { $push: { following: { user: userToFollowId, role: userToFollowRole } } },
       { new: true }
     ).select('following followingCount');
@@ -770,7 +789,7 @@ export const unfollowUser = async (req, res) => {
     });
 
     // Remove target user from the current user's following list
-    const updatedUser = await CurrentUserModel.findByIdAndUpdate(currentUserId, 
+    const updatedUser = await CurrentUserModel.findByIdAndUpdate(currentUserId,
       { $pull: { following: { user: userToUnfollowId } } },
       { new: true }
     ).select('following followingCount');
@@ -829,17 +848,14 @@ export const getFollowing = async (req, res) => {
     const followingDetails = await Promise.all(
       user.following.map(async (followed) => {
         const FollowedModel = getModelByRole(followed.role);
-        const followedUser = await FollowedModel.findById(followed.user).select('firstName lastName businessName venueName profileImage image');
+        const followedUser = await FollowedModel.findById(followed.user)
+          .select('firstName lastName businessName venueName contactName stageName name profileImage image businessLogo role');
         if (!followedUser) return null;
-
-        const name = followedUser.businessName || followedUser.venueName || `${followedUser.firstName} ${followedUser.lastName}`;
-        const profileImage = followedUser.profileImage || followedUser.image;
-
         return {
           id: followed.user,
           role: followed.role,
-          name,
-          profileImage
+          name: extractDisplayName(followedUser),
+          profileImage: followedUser.profileImage || followedUser.image || followedUser.businessLogo || null,
         };
       })
     );
@@ -852,38 +868,53 @@ export const getFollowing = async (req, res) => {
 
 export const createPost = async (req, res) => {
   try {
-    const { text } = req.body;
+    const { text, visibility, location } = req.body;
+    const { id: userId, role } = req.user;
 
-    // The user object is attached by the 'protect' middleware
-    const user = req.user;
+    const images = req.files ? req.files.map(file => path.join('posts', file.filename).replace(/\\/g, '/')) : [];
 
+    if ((!text || !text.trim()) && images.length === 0) {
+      return res.status(400).json({ success: false, message: 'Post content cannot be empty.' });
+    }
+
+    const UserModel = getModelByRole(role);
+    if (!UserModel) {
+      return res.status(400).json({ success: false, message: 'Invalid user role' });
+    }
+
+    const user = await UserModel.findById(userId);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    // Process uploaded images
-    const images = req.files ? req.files.map(file => {
-      // Create a URL-friendly path relative to the 'uploads' directory
-      return path.join('posts', file.filename).replace(/\\/g, '/');
-    }) : [];
-
     const newPost = {
       text,
       images,
+      visibility,
+      location,
       createdAt: new Date(),
     };
 
-    // Add the new post to the beginning of the user's posts array
     user.posts.unshift(newPost);
-
-    // Save the updated user document
     await user.save();
 
-    // Respond with success
+    const createdPost = user.posts[0];
+
+    // The frontend needs the author info along with the post to render it immediately
+    const responseData = {
+      ...createdPost.toObject(),
+      author: {
+        _id: user._id,
+        name: extractDisplayName(user),
+        profileImage: user.profileImage || user.image || user.businessLogo,
+        role: user.role,
+      }
+    };
+
     res.status(201).json({
       success: true,
       message: 'Post created successfully',
-      data: user.posts[0], // Return the newly created post
+      data: responseData,
     });
   } catch (error) {
     console.error('Error creating post:', error);
@@ -979,9 +1010,7 @@ export const commentOnPost = async (req, res) => {
     console.error('Error commenting on post:', error);
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
-};
-
-// Helper function to find a user who owns a specific post
+};// Helper function to find a user who owns a specific post
 async function findUserWithPost(postId) {
   const users = await Promise.all([
     Guest.findOne({ 'posts._id': postId }),
@@ -991,4 +1020,5 @@ async function findUserWithPost(postId) {
   ]);
 
   return users.find(user => user !== null);
-} 
+}
+
