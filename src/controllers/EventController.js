@@ -116,9 +116,9 @@ export const createEvent = async (req, res) => {
     if (!parsedLocation) missingFields.push('location');
 
     if (missingFields.length > 0) {
-      return res.status(400).json({ 
-        message: 'Please provide all required fields', 
-        missingFields: missingFields 
+      return res.status(400).json({
+        message: 'Please provide all required fields',
+        missingFields: missingFields
       });
     }
 
@@ -142,18 +142,18 @@ export const createEvent = async (req, res) => {
       // Parse curator IDs if they're in string format
       let curatorIds;
       try {
-        curatorIds = typeof curators === 'string' 
-          ? JSON.parse(curators) 
+        curatorIds = typeof curators === 'string'
+          ? JSON.parse(curators)
           : curators;
       } catch (error) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: 'Invalid curator IDs format',
-          error: error.message 
+          error: error.message
         });
       }
 
       // Ensure we have an array and clean the IDs
-      curatorIds = Array.isArray(curatorIds) 
+      curatorIds = Array.isArray(curatorIds)
         ? curatorIds.map(id => id.toString().replace(/['"]+/g, '').trim())
         : [curatorIds.toString().replace(/['"]+/g, '').trim()];
 
@@ -161,7 +161,7 @@ export const createEvent = async (req, res) => {
       console.log('Cleaned curator IDs:', curatorIds);
 
       const existingCurators = await Curator.find({ _id: { $in: curatorIds } });
-      
+
       if (existingCurators.length !== curatorIds.length) {
         return res.status(400).json({ message: 'One or more selected curators do not exist' });
       }
@@ -174,18 +174,18 @@ export const createEvent = async (req, res) => {
       // Parse sponsor IDs if they're in string format
       let sponsorIds;
       try {
-        sponsorIds = typeof sponsors === 'string' 
-          ? JSON.parse(sponsors) 
+        sponsorIds = typeof sponsors === 'string'
+          ? JSON.parse(sponsors)
           : sponsors;
       } catch (error) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: 'Invalid sponsor IDs format',
-          error: error.message 
+          error: error.message
         });
       }
 
       // Ensure we have an array and clean the IDs
-      sponsorIds = Array.isArray(sponsorIds) 
+      sponsorIds = Array.isArray(sponsorIds)
         ? sponsorIds.map(id => id.toString().replace(/['"]+/g, '').trim())
         : [sponsorIds.toString().replace(/['"]+/g, '').trim()];
 
@@ -193,7 +193,7 @@ export const createEvent = async (req, res) => {
       console.log('Cleaned sponsor IDs:', sponsorIds);
 
       const existingSponsors = await Sponsor.find({ _id: { $in: sponsorIds } });
-      
+
       if (existingSponsors.length !== sponsorIds.length) {
         return res.status(400).json({ message: 'One or more selected sponsors do not exist' });
       }
@@ -227,6 +227,17 @@ export const createEvent = async (req, res) => {
 
     await event.save();
 
+    // For each sponsor, add this event to their eventsSponsored array
+    if (validatedSponsors && validatedSponsors.length > 0) {
+      for (const sponsorId of validatedSponsors) {
+        await Sponsor.findByIdAndUpdate(
+          sponsorId,
+          { $addToSet: { eventsSponsored: { eventId: event._id, sponsorshipType: 'Brand Exposure', amount: 0, status: 'approved', sponsoredAt: new Date() } } },
+          { new: true }
+        );
+      }
+    }
+
     // Populate the response with curator and sponsor details
     const populatedEvent = await Event.findById(event._id)
       .populate('creator', 'firstName lastName username profileImage stageName')
@@ -247,19 +258,19 @@ export const createEvent = async (req, res) => {
 export const getAllEvents = async (req, res) => {
   try {
     // Filter options
-    const { 
+    const {
       category, status, startDateFrom, startDateTo,
-      venue, creator, isCrowdfunded 
+      venue, creator, isCrowdfunded
     } = req.query;
-    
+
     const filter = {};
-    
+
     if (category) filter.category = category;
     if (status) filter.status = status;
     if (venue) filter.venue = venue;
     if (creator) filter.creator = creator;
     if (isCrowdfunded !== undefined) filter.isCrowdfunded = isCrowdfunded === 'true';
-    
+
     // Date range filter
     if (startDateFrom || startDateTo) {
       filter.startDate = {};
@@ -323,15 +334,15 @@ export const getEventById = async (req, res) => {
         }
       })
       .populate('attendees', 'firstName lastName username');
-    
+
     if (!event) {
       return res.status(404).json({ message: 'Event not found' });
     }
 
     // Format location for iframe embedding
     const location = event.venue?.location || event.location;
-    const embedUrl = location?.coordinates ? 
-      `https://www.google.com/maps/embed/v1/place?key=${process.env.GOOGLE_MAPS_API_KEY}&q=${location.coordinates.latitude},${location.coordinates.longitude}` : 
+    const embedUrl = location?.coordinates ?
+      `https://www.google.com/maps/embed/v1/place?key=${process.env.GOOGLE_MAPS_API_KEY}&q=${location.coordinates.latitude},${location.coordinates.longitude}` :
       null;
 
     // Format the response
@@ -367,7 +378,7 @@ export const getEventById = async (req, res) => {
 export const updateEvent = async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
-    
+
     if (!event) {
       return res.status(404).json({ message: 'Event not found' });
     }
@@ -378,7 +389,7 @@ export const updateEvent = async (req, res) => {
     }
 
     const updateData = req.body;
-    
+
     // Don't allow changing the creator
     delete updateData.creator;
 
@@ -400,7 +411,7 @@ export const updateEvent = async (req, res) => {
 export const deleteEvent = async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
-    
+
     if (!event) {
       return res.status(404).json({ message: 'Event not found' });
     }
@@ -421,7 +432,7 @@ export const deleteEvent = async (req, res) => {
 export const attendEvent = async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
-    
+
     if (!event) {
       return res.status(404).json({ message: 'Event not found' });
     }
@@ -434,7 +445,7 @@ export const attendEvent = async (req, res) => {
     // Add user to attendees
     event.attendees.push(req.user.id);
     event.ticketsSold += 1;
-    
+
     await event.save();
 
     res.json({
@@ -450,13 +461,13 @@ export const attendEvent = async (req, res) => {
 export const toggleEventLike = async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
-    
+
     if (!event) {
       return res.status(404).json({ message: 'Event not found' });
     }
 
     // Check if user has already liked the event
-    const likeIndex = event.likes.findIndex(like => 
+    const likeIndex = event.likes.findIndex(like =>
       like.user.toString() === req.user.id
     );
 
@@ -484,13 +495,13 @@ export const toggleEventLike = async (req, res) => {
 export const toggleEventInterest = async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
-    
+
     if (!event) {
       return res.status(404).json({ message: 'Event not found' });
     }
 
     // Check if user is already interested
-    const interestIndex = event.interestedPeople.findIndex(interest => 
+    const interestIndex = event.interestedPeople.findIndex(interest =>
       interest.user.toString() === req.user.id
     );
 
@@ -519,7 +530,7 @@ export const getEventLikes = async (req, res) => {
   try {
     const event = await Event.findById(req.params.id)
       .populate('likes.user', 'firstName lastName username profileImage');
-    
+
     if (!event) {
       return res.status(404).json({ message: 'Event not found' });
     }
@@ -547,7 +558,7 @@ export const getEventInterested = async (req, res) => {
   try {
     const event = await Event.findById(req.params.id)
       .populate('interestedPeople.user', 'firstName lastName username profileImage');
-    
+
     if (!event) {
       return res.status(404).json({ message: 'Event not found' });
     }
@@ -574,7 +585,7 @@ export const getEventInterested = async (req, res) => {
 export const addEventProduct = async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
-    
+
     if (!event) {
       return res.status(404).json({ message: 'Event not found' });
     }
@@ -611,7 +622,7 @@ export const addEventProduct = async (req, res) => {
 export const updateEventProduct = async (req, res) => {
   try {
     const event = await Event.findById(req.params.eventId);
-    
+
     if (!event) {
       return res.status(404).json({ message: 'Event not found' });
     }
@@ -649,7 +660,7 @@ export const updateEventProduct = async (req, res) => {
 export const deleteEventProduct = async (req, res) => {
   try {
     const event = await Event.findById(req.params.eventId);
-    
+
     if (!event) {
       return res.status(404).json({ message: 'Event not found' });
     }
@@ -684,7 +695,7 @@ export const getEventProducts = async (req, res) => {
   try {
     const event = await Event.findById(req.params.id)
       .select('products');
-    
+
     if (!event) {
       return res.status(404).json({ message: 'Event not found' });
     }
