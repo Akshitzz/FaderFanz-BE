@@ -5,6 +5,7 @@ import VenueOwner from '../models/VenueOwner.js';
 import Sponsor from '../models/Sponsor.js';
 import Curator from '../models/Curator.js';
 import Guest from '../models/Guest.js';
+import Product from '../models/Product.js';
 
 export const registerSponsor = async (req, res) => {
   try {
@@ -25,12 +26,12 @@ export const registerSponsor = async (req, res) => {
     } = req.body;
 
     // Check for required fields
-    if (!businessName || !taxIdentificationNumber || !description || !contactName || 
-        !role || !preferredEvents || !sponsorshipExpectations || !email || !password || !location) {
-      return res.status(400).json({ 
+    if (!businessName || !taxIdentificationNumber || !description || !contactName ||
+      !role || !preferredEvents || !sponsorshipExpectations || !email || !password || !location) {
+      return res.status(400).json({
         message: 'Missing required fields',
-        required: ['businessName', 'taxIdentificationNumber', 'description', 'contactName', 
-                  'role', 'preferredEvents', 'sponsorshipExpectations', 'email', 'password', 'location']
+        required: ['businessName', 'taxIdentificationNumber', 'description', 'contactName',
+          'role', 'preferredEvents', 'sponsorshipExpectations', 'email', 'password', 'location']
       });
     }
 
@@ -45,7 +46,7 @@ export const registerSponsor = async (req, res) => {
 
     const businessLogo = req.files?.businessLogo?.[0]?.path;
     const businessBanner = req.files?.businessBanner?.[0]?.path;
-    console.log("Recieved Data :",req.body);
+    console.log("Recieved Data :", req.body);
     if (
       !businessName ||
       !taxIdentificationNumber ||
@@ -56,7 +57,7 @@ export const registerSponsor = async (req, res) => {
       !sponsorshipExpectations ||
       !email ||
       !password,
-      !location 
+      !location
     ) {
       return res.status(400).json({ error: 'Fill all the required fields including social media handles' });
     }
@@ -73,9 +74,25 @@ export const registerSponsor = async (req, res) => {
     }));
 
     //location validation
-    const parsedLocation = JSON.parse(location);
+    let parsedLocation = location;
+    if (typeof location === 'string') {
+      try {
+        parsedLocation = JSON.parse(location);
+      } catch (err) {
+        return res.status(400).json({ error: 'Invalid location format (not JSON parseable)' });
+      }
+    }
+    // Ensure coordinates are numbers if present
+    if (parsedLocation && parsedLocation.coordinates) {
+      if (typeof parsedLocation.coordinates.latitude === 'string') {
+        parsedLocation.coordinates.latitude = parseFloat(parsedLocation.coordinates.latitude);
+      }
+      if (typeof parsedLocation.coordinates.longitude === 'string') {
+        parsedLocation.coordinates.longitude = parseFloat(parsedLocation.coordinates.longitude);
+      }
+    }
     if (!parsedLocation || !parsedLocation.address || !parsedLocation.city || !parsedLocation.state || !parsedLocation.country) {
-      return res.status(400).json({ error: 'Invalid location format' }); 
+      return res.status(400).json({ error: 'Invalid location format' });
     }
 
     const sponsor = new Sponsor({
@@ -83,7 +100,8 @@ export const registerSponsor = async (req, res) => {
       taxIdentificationNumber,
       description,
       contactName,
-      role,
+      role: 'sponsor',
+      businessRole: role,
       preferredEvents,
       sponsorshipExpectations,
       products: productsWithImages,
@@ -100,6 +118,19 @@ export const registerSponsor = async (req, res) => {
     });
 
     await sponsor.save();
+
+    // Also create Product documents for each product
+    for (const product of productsWithImages) {
+      await Product.create({
+        name: product.name,
+        description: product.description || '',
+        price: Number(product.price),
+        stock: product.stock ? Number(product.stock) : 0,
+        category: product.category || 'other',
+        images: product.image ? [product.image.replace(/\\/g, '/')] : [],
+        seller: sponsor._id
+      });
+    }
 
     const token = jwt.sign({ id: sponsor._id, role: 'sponsor' }, process.env.JWT_SECRET, { expiresIn: '24h' });
 
@@ -126,10 +157,11 @@ export const registerVenueOwner = async (req, res) => {
       hasMenu,
       menuProducts,
       password,
+      about
     } = req.body;
 
     // Validate required fields
-    if (!venueName || !address || !gstInformation || !contactPhone || !email || !hasMenu || !menuProducts || !password) {
+    if (!venueName || !address || !gstInformation || !contactPhone || !email || !hasMenu || !menuProducts || !password || !about) {
       return res.status(400).json({ error: 'Fill all the required fields' });
     }
 
@@ -199,6 +231,7 @@ export const registerVenueOwner = async (req, res) => {
       hasMenu: hasMenu === 'true',
       menuProducts: menuData,
       password: hashedPassword,
+      about
     });
 
     await newVenue.save();
@@ -273,10 +306,10 @@ export const registerGuest = async (req, res) => {
       video: req.files?.video?.[0]?.path || null,
     };
 
-// Create a new Guest document
+    // Create a new Guest document
     const newGuest = new Guest(guestData);
 
-// Save the guest to the database
+    // Save the guest to the database
     await newGuest.save();
 
     // Generate JWT
@@ -296,57 +329,57 @@ export const registerGuest = async (req, res) => {
   }
 };
 
-export const login =async (req, res) => {
-  try{
-    const { email, password ,role} = req.body;
+export const login = async (req, res) => {
+  try {
+    const { email, password, role } = req.body;
     // validation
-    if(!email || !password || !role) {
+    if (!email || !password || !role) {
       return res.status(400).json({ message: 'Email, password, and role are required' });
     }
     // determine the modal to query based on role
     let Model;
-    switch(role){
+    switch (role) {
       case 'sponsor':
-      Model = Sponsor;
-      break;
+        Model = Sponsor;
+        break;
       case 'venueOwner':
-      Model = VenueOwner;
-      break;
+        Model = VenueOwner;
+        break;
       case 'curator':
-      Model = Curator;  
-      break;
+        Model = Curator;
+        break;
       case 'guest':
-      Model = Guest;
-      break;
+        Model = Guest;
+        break;
       default:
-      return res.status(400).json({ message: 'Invalid role' });
+        return res.status(400).json({ message: 'Invalid role' });
     }
-      // Find the user by email
-      const user = await Model.findOne({ email });
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-  
-      // Check if the password matches using bcrypt
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-      if (!isPasswordValid) {
-        return res.status(401).json({ message: 'Invalid credentials' });
-      }
-  
-      // Generate JWT
-      const token = jwt.sign({ id: user._id, role }, process.env.JWT_SECRET, { expiresIn: '24h' });
-  
-      res.status(200).json({
-        message: 'Login successful',
-        token,
-        user: {
-          id: user._id,
-          email: user.email,
-          role,
-        },
-      });      
-    
-  }catch(error) {
+    // Find the user by email
+    const user = await Model.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if the password matches using bcrypt
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    // Generate JWT
+    const token = jwt.sign({ id: user._id, role }, process.env.JWT_SECRET, { expiresIn: '24h' });
+
+    res.status(200).json({
+      message: 'Login successful',
+      token,
+      user: {
+        id: user._id,
+        email: user.email,
+        role,
+      },
+    });
+
+  } catch (error) {
     console.error('Error in login:', error);
     return res.status(500).json({ message: 'Server error' });
   }
@@ -439,8 +472,8 @@ export const changePassword = async (req, res) => {
     // Validate new password strength (minimum 8 characters, at least one number and one letter)
     const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
     if (!passwordRegex.test(newPassword)) {
-      return res.status(400).json({ 
-        message: 'New password must be at least 8 characters long and contain at least one letter and one number' 
+      return res.status(400).json({
+        message: 'New password must be at least 8 characters long and contain at least one letter and one number'
       });
     }
 
@@ -632,7 +665,7 @@ export const updateVenueOwnerProfile = async (req, res) => {
       try {
         const menuProducts = JSON.parse(req.body.menuProducts);
         const menuImages = req.files?.menuImages || [];
-        
+
         updateData.menuProducts = menuProducts.map((product, index) => ({
           name: product.name,
           price: product.price,

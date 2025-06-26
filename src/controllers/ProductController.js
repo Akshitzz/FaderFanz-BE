@@ -22,10 +22,10 @@ export const createProduct = async (req, res) => {
       // Check if user is creator or sponsor of the event
       const isCreator = event.creator.toString() === req.user.id;
       const isSponsor = event.sponsors.some(sponsor => sponsor.toString() === req.user.id);
-      
+
       if (!isCreator && !isSponsor && req.user.role !== 'admin') {
-        return res.status(403).json({ 
-          message: 'You can only create products for events you created or sponsor' 
+        return res.status(403).json({
+          message: 'You can only create products for events you created or sponsor'
         });
       }
     }
@@ -56,13 +56,13 @@ export const getAllProducts = async (req, res) => {
   try {
     // Filter options
     const { category, minPrice, maxPrice, event, seller } = req.query;
-    
+
     const filter = {};
-    
+
     if (category) filter.category = category;
     if (event) filter.relatedEvent = event;
     if (seller) filter.seller = seller;
-    
+
     // Price range filter
     if (minPrice || maxPrice) {
       filter.price = {};
@@ -89,7 +89,7 @@ export const getProductById = async (req, res) => {
     const product = await Product.findById(req.params.id)
       .populate('seller', 'firstName lastName username')
       .populate('relatedEvent', 'title description startDate');
-    
+
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
@@ -103,7 +103,7 @@ export const getProductById = async (req, res) => {
 export const updateProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
-    
+
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
@@ -113,10 +113,43 @@ export const updateProduct = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to update this product' });
     }
 
+    // Debug: Log incoming data
+    console.log('Update Product - req.body:', req.body);
+    console.log('Update Product - req.file:', req.file);
+    console.log('Update Product - req.files:', req.files);
+
     const updateData = req.body;
-    
     // Don't allow changing seller
     delete updateData.seller;
+
+    // Handle file upload (multer)
+    if (req.file) {
+      // Single file upload (e.g., productImage)
+      let normalizedPath = req.file.path.replace(/\\/g, '/');
+      // Make path relative to server root (remove everything before 'uploads')
+      const uploadsIndex = normalizedPath.indexOf('uploads');
+      if (uploadsIndex !== -1) {
+        normalizedPath = normalizedPath.substring(uploadsIndex);
+      }
+      updateData.images = [normalizedPath];
+    } else if (req.files && req.files.productImage) {
+      // Multer .single('productImage') or .fields([{name: 'productImage'}])
+      updateData.images = req.files.productImage.map(f => {
+        let p = f.path.replace(/\\/g, '/');
+        const idx = p.indexOf('uploads');
+        return idx !== -1 ? p.substring(idx) : p;
+      });
+    } else if (req.files && Array.isArray(req.files)) {
+      // Multer .array('images')
+      updateData.images = req.files.map(f => {
+        let p = f.path.replace(/\\/g, '/');
+        const idx = p.indexOf('uploads');
+        return idx !== -1 ? p.substring(idx) : p;
+      });
+    } else {
+      // If no new image is uploaded, do not update the images field
+      delete updateData.images;
+    }
 
     const updatedProduct = await Product.findByIdAndUpdate(
       req.params.id,
@@ -129,6 +162,8 @@ export const updateProduct = async (req, res) => {
       product: updatedProduct
     });
   } catch (error) {
+    console.error('Error in updateProduct:', error);
+    if (error.stack) console.error(error.stack);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -136,7 +171,7 @@ export const updateProduct = async (req, res) => {
 export const deleteProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
-    
+
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }

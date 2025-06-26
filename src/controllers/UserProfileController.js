@@ -29,9 +29,30 @@ async function formatEvent(event) {
   const embedUrl = location?.coordinates ?
     `https://www.google.com/maps/embed/v1/place?key=${process.env.GOOGLE_MAPS_API_KEY}&q=${location.coordinates.latitude},${location.coordinates.longitude}` :
     null;
+  // Use banner.url as the main image if present
+  let imagePath = event.banner && event.banner.url ? event.banner.url : event.image;
+  if (imagePath) {
+    imagePath = imagePath.replace(/\\/g, '/');
+    const uploadsIndex = imagePath.indexOf('uploads');
+    if (uploadsIndex !== -1) {
+      imagePath = imagePath.substring(uploadsIndex);
+    }
+  }
+  // Normalize images array if present
+  let imagesArr = event.images;
+  if (Array.isArray(imagesArr)) {
+    imagesArr = imagesArr.map(img => {
+      let norm = img.replace(/\\/g, '/');
+      const uploadsIdx = norm.indexOf('uploads');
+      if (uploadsIdx !== -1) norm = norm.substring(uploadsIdx);
+      return norm;
+    });
+  }
   return {
     ...event.toObject(),
     location: { ...location, embedUrl },
+    image: imagePath || (imagesArr && imagesArr[0]) || null,
+    images: imagesArr || [],
     curator: event.creator ? {
       id: event.creator._id,
       name: `${event.creator.firstName} ${event.creator.lastName}`,
@@ -85,9 +106,8 @@ export const getVenueOwnerProfile = async (req, res) => {
       return res.status(404).json({ message: 'Venue owner not found' });
     }
 
-    // Get all venues owned by this venue owner
-    const venuesRaw = await Venue.find({ owner: id }).populate('reviews');
-
+    // Get all venues where contactInformation.email matches venueOwner.email (ignore owner field)
+    const venuesRaw = await Venue.find({ 'contactInformation.email': venueOwner.email }).populate('reviews');
     // For each venue, fetch its events
     const venues = await Promise.all(venuesRaw.map(async (venue) => {
       const events = await Event.find({ venue: venue._id }).sort({ startDate: -1 });
@@ -412,15 +432,34 @@ export const getMe = async (req, res) => {
 
     // --- Fetch associated events based on user role ---
     let events = [];
+    let products = [];
+    let sponsoredEvents = [];
+    let venues = [];
     if (role === 'curator') {
       events = await Event.find({ creator: userId }).sort({ startDate: -1 });
     } else if (role === 'venueOwner') {
-      const venues = await Venue.find({ owner: userId }).select('_id');
+      venues = await Venue.find({ 'contactInformation.email': user.email });
+      // Normalize venueImage paths for each venue
+      venues = venues.map(venue => {
+        if (venue.venueImage && Array.isArray(venue.venueImage)) {
+          venue.venueImage = venue.venueImage.map(img =>
+            img
+              .replace(/^.*uploads[\\\/]/, 'uploads/')
+              .replace(/\\/g, '/')
+          );
+        }
+        return venue;
+      });
       const venueIds = venues.map(v => v._id);
-      events = await Event.find({ venue: { $in: venueIds } }).sort({ startDate: -1 });
+      const rawEvents = await Event.find({ venue: { $in: venueIds } }).sort({ startDate: -1 });
+      events = await Promise.all(rawEvents.map(formatEvent));
     } else if (role === 'sponsor') {
       const sponsoredEventIds = user.eventsSponsored.map(e => e.eventId);
       events = await Event.find({ _id: { $in: sponsoredEventIds } }).sort({ startDate: -1 });
+      products = await Product.find({ seller: userId });
+      // Also fetch and format sponsoredEvents for frontend
+      const rawSponsoredEvents = await Event.find({ _id: { $in: sponsoredEventIds } }).sort({ startDate: -1 });
+      sponsoredEvents = await Promise.all(rawSponsoredEvents.map(formatEvent));
     } else if (role === 'guest') {
       const eventIds = (user.ticketBookings || []).map(booking => booking.event);
       events = await Event.find({ _id: { $in: eventIds } }).sort({ startDate: -1 });
@@ -490,6 +529,9 @@ export const getMe = async (req, res) => {
         followers: followers.filter(Boolean),
         feed, // Include the formatted posts in the response
         events, // <-- Add events to the response
+        products, // <-- Add products to the response for sponsors
+        venues, // <-- Add venues to the response for venue owners
+        ...(role === 'sponsor' ? { sponsoredEvents } : {}),
         followingCount: (user.following || []).length,
         followersCount: (user.followers || []).length,
       }

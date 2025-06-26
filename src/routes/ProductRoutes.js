@@ -6,6 +6,8 @@ import {
   updateProduct,
   deleteProduct,
 } from '../controllers/ProductController.js';
+import { productUpload, handleUploadError } from '../middleware/upload.js';
+import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -19,7 +21,7 @@ router.get('/', getAllProducts);
 router.get('/:id', getProductById);
 
 // Route to update an existing product
-router.put('/:id', updateProduct);
+router.put('/:id', protect, productUpload, handleUploadError, updateProduct);
 
 // Route to delete a product
 router.delete('/:id', deleteProduct);
